@@ -147,7 +147,7 @@ class AlzProgNet(keras.Model):
                 training=training
             )
 
-        x = self.transformer_norm(x)
+        # x = self.transformer_norm(x)
         x = self.flattern(x)
         x = self.latent_norm(x)
 
