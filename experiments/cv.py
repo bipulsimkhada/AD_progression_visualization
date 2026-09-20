@@ -149,7 +149,7 @@ def cross_validation(
 
         fold_model = AlzProgNet(
             num_modalities=5,
-            modalities_hidden_dims=[32, 512],
+            modalities_hidden_dims=[32, 256],
             modality_output_dim=128,
             latent_dim=512,
             num_transformer_layers=3,

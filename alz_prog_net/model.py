@@ -86,7 +86,7 @@ class AlzProgNet(keras.Model):
             for i in range(self.num_transformer_layers)
         ]
 
-        self.transformer_norm = layers.LayerNormalization()
+        # self.transformer_norm = layers.LayerNormalization()
         self.flattern = layers.Flatten()
         self.latent_norm = layers.LayerNormalization()
 
