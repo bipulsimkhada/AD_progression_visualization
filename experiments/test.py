@@ -193,9 +193,10 @@ def evaluate_ensemble(
             indent=2,
         )
 
-    for index in range(y_test.shape[0]):
-        rid = metadata_test[index]["RID"]
-        viscode = metadata_test[index]["VISCODE"]
+    for index, (_, row) in range(metadata_test.iterrows()):
+        rid = row["RID"]
+        viscode = row["VISCODE"]
+
         fig, ax = adpg_visualizer(
             y_test[index],
             y_pred_mean[index],
