@@ -11,6 +11,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from alz_prog_net.eval import evaluate_model
 from experiments.constants import MODALITIES
 from utils import split_modalities
+from visualizer.adpg import adpg_visualizer
 
 
 def evaluate_ensemble(
@@ -18,6 +19,7 @@ def evaluate_ensemble(
     X_train,
     X_test,
     y_test,
+    metadata_test,
     combo,
     run_name,
     imputer="mean",
@@ -190,3 +192,17 @@ def evaluate_ensemble(
             f,
             indent=2,
         )
+
+    for index in range(y_test.shape[0]):
+        rid = metadata_test[index]["RID"]
+        viscode = metadata_test[index]["VISCODE"]
+        fig, ax = adpg_visualizer(
+            y_test[index],
+            y_pred_mean[index],
+            y_pred_sd[index],
+            rid,
+            viscode,
+        )
+
+        fig_path = results_dir / f"figure_{index}_RID_{rid}_{viscode}.png"
+        fig.savefig(fig_path, dpi=300, bbox_inches="tight")

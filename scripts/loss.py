@@ -21,7 +21,7 @@ def main():
     print("CREATING DATASET")
     print("=" * 80)
 
-    X, y, groups = create_dataset()
+    X, y, groups, metadata = create_dataset()
 
     target_tensors = createOutputLabels(y)
     y_stable = y["stable"].to_numpy()
@@ -55,16 +55,18 @@ def main():
 
     X_test = X.iloc[test_idx]
     y_test = target_tensors[test_idx]
+    metadata_test = metadata.iloc[test_idx]
 
     print(f"Train samples: {len(train_idx)}")
     print(f"Test samples:  {len(test_idx)}")
 
     # run_loss_stage("stage_3_time_weights", X_train, y_train, y_stable_train, groups_train)
-    run_loss_stage("stage_4_loss_type", X_train, y_train, y_stable_train, groups_train)
-    # evaluate_ensemble("models/loss/s4_loss_mse", X_train, X_test, y_test,
-    #                         ("mri", "pet", "cog", "csf", "rf"),
-    #                         "ensemble_test_s4_loss_mse",
-    #                         "median", "min-max")
+    # run_loss_stage("stage_4_loss_type", X_train, y_train, y_stable_train, groups_train)
+
+    evaluate_ensemble("models/loss/s4_loss_mse", X_train, X_test, y_test, metadata_test,
+                            ("mri", "pet", "cog", "csf", "rf"),
+                            "ensemble_test_s4_loss_mse",
+                            "median", "min-max")
 
 
 if __name__ == "__main__":

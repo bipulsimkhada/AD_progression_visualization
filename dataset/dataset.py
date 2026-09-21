@@ -21,10 +21,11 @@ def create_dataset():
     X = df[regions]
     y = df[targets].copy()
     groups = df['RID'].to_numpy()
+    metadata = df[['RID', 'VISCODE']].to_dict(orient='records')
 
     y["stable"] = (y.nunique(axis=1) == 1).astype(int)
 
-    return X, y, groups
+    return X, y, groups, metadata
 
 def createOutputLabels(Labels):
     Labels = Labels[targets]
