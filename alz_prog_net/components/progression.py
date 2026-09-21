@@ -219,11 +219,16 @@ class TemporalProgressionBlock(layers.Layer):
             )
 
     def build(self, input_shape):
-        self.residual_scale = self.add_weight(
+        # convert desired initial scale to sigmoid logit
+        initial_logit = math.log(
+            self.initial_residual_scale
+            / (1.0 - self.initial_residual_scale)
+        )
+        self.residual_scale_logit = self.add_weight(
             name="residual_scale",
             shape=(),
             initializer=keras.initializers.Constant(
-                self.initial_residual_scale
+                initial_logit
             ),
             trainable=True
         )
@@ -301,7 +306,8 @@ class TemporalProgressionBlock(layers.Layer):
                 delta
             )
 
-        update = self.residual_scale * gate * delta
+        residual_scale = ops.sigmoid(self.residual_scale_logit)
+        update = residual_scale * gate * delta
 
         # residual progression
         if self.use_residual:

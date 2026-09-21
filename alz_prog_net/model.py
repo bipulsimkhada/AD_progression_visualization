@@ -2,7 +2,7 @@ import keras
 from keras import layers, ops
 
 from alz_prog_net.components.encoder import ModalityEncoder
-from alz_prog_net.components.transformer import TransformerBlock
+from alz_prog_net.components.transformer import TransformerBlock, AttentionPooling
 from alz_prog_net.components.progression import (
     DiseaseProgressionDecoder,
     SwiGLU
@@ -23,7 +23,10 @@ class AlzProgNet(keras.Model):
         num_transformer_layers=4,
         num_heads=2,
         ff_dim=512,
-        dropout=0.1,
+        pooling_hidden_dim=32,
+        modality_dropout=0.1,
+        attention_dropout=0.0,
+        residual_dropout=0.05,
         progression_hidden_dims=(128, 64, 32),
         time_points=(0, 6, 12, 24),
         temporal_levels=(True, True, False),
@@ -46,7 +49,9 @@ class AlzProgNet(keras.Model):
         self.num_transformer_layers = num_transformer_layers
         self.num_heads = num_heads
         self.ff_dim = ff_dim
-        self.dropout = dropout
+        self.modality_dropout = modality_dropout
+        self.attention_dropout = attention_dropout
+        self.residual_dropout = residual_dropout
         self.progression_hidden_dims = tuple(progression_hidden_dims)
         self.time_points = tuple(time_points)
         self.temporal_levels = tuple(temporal_levels)
@@ -66,7 +71,7 @@ class AlzProgNet(keras.Model):
             ModalityEncoder(
                 hidden_units=self.modalities_hidden_dims,
                 output_dim=self.modality_output_dim,
-                dropout_rate=self.dropout,
+                dropout_rate=self.modality_dropout,
                 modality_name=f"modality_encoder_{i}"
             )
             for i in range(self.num_modalities)
@@ -81,14 +86,25 @@ class AlzProgNet(keras.Model):
                 dim=self.modality_output_dim,
                 num_heads=self.num_heads,
                 ff_dim=self.ff_dim,
+                attention_dropout=self.attention_dropout,
+                residual_dropout=self.residual_dropout,
                 name=f"transformer_{i}"
             )
             for i in range(self.num_transformer_layers)
         ]
 
         # self.transformer_norm = layers.LayerNormalization()
-        self.flattern = layers.Flatten()
-        self.latent_norm = layers.LayerNormalization()
+        # self.flattern = layers.Flatten()
+        
+        self.pooling_hidden_dim = pooling_hidden_dim
+        self.attention_pooling = AttentionPooling(
+            dim=self.modality_output_dim,
+            hidden_dim=self.pooling_hidden_dim,
+            dropout_rate=self.modality_dropout,
+            name="attention_pooling"
+
+        )
+        self.latent_norm = layers.LayerNormalization(name="latent_norm")
 
         # --------------------------------------------------
         # Latent projection
@@ -148,7 +164,11 @@ class AlzProgNet(keras.Model):
             )
 
         # x = self.transformer_norm(x)
-        x = self.flattern(x)
+        # x = self.flattern(x)
+        x = self.attention_pooling(
+            x,
+            training=training
+        )
         x = self.latent_norm(x)
 
         latent = self.latent_projection(x)
@@ -181,7 +201,9 @@ class AlzProgNet(keras.Model):
             "num_transformer_layers": self.num_transformer_layers,
             "num_heads": self.num_heads,
             "ff_dim": self.ff_dim,
-            "dropout": self.dropout,
+            "modality_dropout": self.modality_dropout,
+            "attention_dropout": self.attention_dropout,
+            "residual_dropout": self.residual_dropout,
             "progression_hidden_dims": self.progression_hidden_dims,
             "time_points": self.time_points,
             "temporal_levels": self.temporal_levels,
