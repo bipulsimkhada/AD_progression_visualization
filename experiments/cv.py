@@ -16,23 +16,8 @@ from utils import compute_time_class_weights
 from alz_prog_net.loss import LongitudinalTransitionLoss
 from alz_prog_net.metrics import grouped_categorical_accuracy
 from alz_prog_net.eval import evaluate_model
-
-
-modalities = {
-    "mri": (6, slice(None, 6)),
-    "pet": (2, slice(6, 8)),
-    "cog": (11, slice(8, 19)),
-    "csf": (3, slice(19, 22)),
-    "rf":  (4, slice(22, 26)),
-}
-
-
-def split_modalities(X, combo):
-    return [
-        X[:, modalities[m][1]]
-        for m in combo
-        if m in modalities
-    ]
+from experiments.constants import MODALITIES
+from utils import split_modalities
 
 
 def cross_validation(
@@ -170,11 +155,11 @@ def cross_validation(
 
         inputs = [
             keras.Input(
-                shape=(modalities[m][0],),
+                shape=(MODALITIES[m][0],),
                 name=f"modality_{i}",
             )
             for i, m in enumerate(combo)
-            if m in modalities
+            if m in MODALITIES
         ]
 
         outputs = fold_model(inputs)

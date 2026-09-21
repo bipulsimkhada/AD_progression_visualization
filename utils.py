@@ -1,4 +1,5 @@
 import numpy as np
+from experiments.constants import MODALITIES
 
 def compute_time_class_weights(y_train):
     labels = np.argmax(y_train, axis=-1)
@@ -27,3 +28,10 @@ def compute_time_class_weights(y_train):
         )
 
     return weights
+
+def split_modalities(X, combo):
+    return [
+        X[:, MODALITIES[m][1]]
+        for m in combo
+        if m in MODALITIES
+    ]

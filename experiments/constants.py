@@ -1,5 +1,13 @@
 RANDOM_STATE = 42
 
+MODALITIES = {
+    "mri": (6, slice(None, 6)),
+    "pet": (2, slice(6, 8)),
+    "cog": (11, slice(8, 19)),
+    "csf": (3, slice(19, 22)),
+    "rf":  (4, slice(22, 26)),
+}
+
 LOSS_SEARCH_STAGES = {
     "stage_1_severity": [
         {
