@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import keras
 import json
+import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -193,7 +194,7 @@ def evaluate_ensemble(
             indent=2,
         )
 
-    for index, (_, row) in range(metadata_test.iterrows()):
+    for index, (_, row) in enumerate(metadata_test.iterrows()):
         rid = row["RID"]
         viscode = row["VISCODE"]
 
@@ -207,3 +208,6 @@ def evaluate_ensemble(
 
         fig_path = results_dir / f"figure_{index}_RID_{rid}_{viscode}.png"
         fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
+
