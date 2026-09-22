@@ -12,6 +12,9 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         transition_weight=0.25,
         transition_loss="huber",
         huber_delta=1.0,
+        stable_transition_weight=1.0,
+        converter_transition_weight=1.0,
+        converter_sample_weight=1.0,
         from_logits=False,
         name="longitudinal_transition_loss",
         reduction="sum_over_batch_size",
@@ -44,6 +47,9 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
 
         self.severity_weight = float(severity_weight)
         self.transition_weight = float(transition_weight)
+        self.stable_transition_weight = float(stable_transition_weight)
+        self.converter_transition_weight = float(converter_transition_weight)
+        self.converter_sample_weight = float(converter_sample_weight)
         self.transition_loss = transition_loss
         self.huber_delta = float(huber_delta)
         self.from_logits = from_logits
@@ -133,6 +139,31 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
             linear = abs_error - quadratic
             transition_loss = 0.5 * ops.square(quadratic) + self.huber_delta * linear
 
+        # transiting event weighing
+        is_conversion_transition = ops.cast(
+            ops.abs(true_delta) > 0.0,
+            "float32",
+        )
+
+        transition_event_weights = (
+            self.stable_transition_weight +
+            is_conversion_transition * (
+                self.converter_transition_weight - self.stable_transition_weight
+            )
+        )
+
+        transition_loss = (
+            transition_loss * transition_event_weights
+        )
+
+        converter_sample = ops.max(is_conversion_transition, axis=-1) #(N,)
+        sample_weights = (
+            1.0 + 
+            converter_sample * (
+                self.converter_sample_weight - 1.0
+            )
+        )
+
         # convert transition_loss (N, 3) to (N, 4)
         zero_transition = ops.zeros_like(transition_loss[:, :1])
         transition_loss = ops.concatenate([
@@ -156,6 +187,7 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
             total_loss,
             axis=1
         )
+        loss_per_sample = loss_per_sample * sample_weights
 
         return loss_per_sample
 
@@ -170,6 +202,9 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
             "transition_weight": self.transition_weight,
             "transition_loss": self.transition_loss,
             "huber_delta": self.huber_delta,
+            "stable_transition_weight": self.stable_transition_weight,
+            "converter_transition_weight": self.converter_transition_weight,
+            "converter_sample_weight": self.converter_sample_weight,
             "from_logits": self.from_logits
         })
 

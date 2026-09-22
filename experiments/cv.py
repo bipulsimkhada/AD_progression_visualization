@@ -39,6 +39,9 @@ def cross_validation(
     transition_weight=1.0,
     transition_loss="huber",
     huber_delta=1.0,
+    stable_transition_weight=0.5,
+    converter_transition_weight=3.0,
+    converter_sample_weight=1.5,
     from_logits=False,
 ):
     """
@@ -183,6 +186,9 @@ def cross_validation(
             transition_loss=transition_loss,
             huber_delta=huber_delta,
             from_logits=from_logits,
+            stable_transition_weight=stable_transition_weight,
+            converter_transition_weight=converter_transition_weight,
+            converter_sample_weight=converter_sample_weight,
         )
 
         optimizer = keras.optimizers.AdamW()
