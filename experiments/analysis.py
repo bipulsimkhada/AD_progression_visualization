@@ -40,6 +40,11 @@ def get_results(path, prefix):
 
                 "converter_accuracy": data["converter"]["overall"]["accuracy"],
                 "converter_balanced_accuracy": data["converter"]["overall"]["balanced_accuracy"],
+
+                "converter_T0_accuracy": data["converter"]["by_time"]["current"]["accuracy"],
+                "converter_T6_accuracy": data["converter"]["by_time"]["6_month"]["accuracy"],
+                "converter_T12_accuracy": data["converter"]["by_time"]["12_month"]["accuracy"],
+                "converter_T24_accuracy": data["converter"]["by_time"]["24_month"]["accuracy"],
             })
 
         df = pd.DataFrame(results)

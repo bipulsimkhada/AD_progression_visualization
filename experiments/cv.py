@@ -152,7 +152,7 @@ def cross_validation(
             use_time=True,
             use_gate=True,
             use_residual=True,
-            initial_residual_scale=0.1,
+            initial_residual_scale=0.25,
             output_dim=3
         )
 
