@@ -1,6 +1,7 @@
 import os
 import json
 import gc
+import numpy as np
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
@@ -13,7 +14,7 @@ from sklearn.pipeline import Pipeline
 
 from alz_prog_net.model import AlzProgNet
 from utils import compute_time_class_weights
-from alz_prog_net.loss import LongitudinalTransitionLoss
+from alz_prog_net.loss import LongitudinalTransitionLoss, DiscreteTimeConversionLoss
 from alz_prog_net.metrics import grouped_categorical_accuracy
 from alz_prog_net.eval import evaluate_model
 from experiments.constants import MODALITIES
@@ -97,7 +98,20 @@ def cross_validation(
         X_val_raw = X.iloc[val_idx]
 
         y_train = y[train_idx]
+        y_train = {
+            "prediction": np.stack(y_train[:, 0]),
+            "trajectory": np.stack(y_train[:, 1]),
+            "conversion_hazard": np.stack(y_train[:, 2]),
+        }
         y_val = y[val_idx]
+        y_val = {
+            "prediction": np.stack(y_val[:, 0]),
+            "trajectory": np.stack(y_val[:, 1]),
+            "conversion_hazard": np.stack(y_val[:, 2]),
+        }
+
+        print("trajectory", type(y_train["trajectory"]), y_train["trajectory"].shape, y_train["trajectory"][0], (y_train["trajectory"][0].dtype))
+
 
         # --------------------------------------------------------------
         # Preprocessing
@@ -133,7 +147,7 @@ def cross_validation(
         # Fold-specific class weights
         # --------------------------------------------------------------
 
-        class_weights = compute_time_class_weights(y_train)
+        class_weights = compute_time_class_weights(y_train["prediction"])
 
         fold_model = AlzProgNet(
             num_modalities=5,
@@ -142,9 +156,9 @@ def cross_validation(
             latent_dim=512,
             num_transformer_layers=3,
             num_heads=2,
-            ff_dim=128,
+            ff_dim=512,
             modality_dropout=0.1,
-            progression_hidden_dims=(264, 128, 32),
+            progression_hidden_dims=(256, 128, 32),
             time_points=(0, 6, 12, 24),
             temporal_levels=(True, True, False),
             time_dim=16,
@@ -152,7 +166,16 @@ def cross_validation(
             use_time=True,
             use_gate=True,
             use_residual=True,
+            use_time_modulation=True,
+            use_interaction=True,
+
             initial_residual_scale=0.25,
+            delta_dropout=0.05,
+            
+            trajectory_hidden_dims=(256, 64, 32),
+            trajectory_num_classes=4,
+            trajectory_dropout=0.1,
+            num_conversion_intervals=3,
             output_dim=3
         )
 
@@ -172,6 +195,8 @@ def cross_validation(
             outputs=outputs,
             name="AlzProgNet",
         )
+
+        print("output names", alz_prog_net.output_names)
 
         # --------------------------------------------------------------
         # Loss
@@ -195,8 +220,19 @@ def cross_validation(
 
         alz_prog_net.compile(
             optimizer=optimizer,
-            loss=loss_fn,
-            metrics=[grouped_categorical_accuracy],
+            loss={
+                "predictions": loss_fn,
+                "trajectory": keras.losses.CategoricalCrossentropy(),
+                "conversion_hazard": DiscreteTimeConversionLoss()
+            },
+            loss_weights={
+                "predictions": 1.0,
+                "trajectory": 0.5,
+                "conversion_hazard": 0.25,
+            },
+            metrics={
+                "predictions": [grouped_categorical_accuracy],
+            },
         )
 
         # --------------------------------------------------------------
@@ -287,7 +323,7 @@ def cross_validation(
 
         results = evaluate_model(
             y_val,
-            y_pred,
+            y_pred["predictions"],
         )
 
         # --------------------------------------------------------------

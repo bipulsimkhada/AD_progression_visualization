@@ -7,6 +7,7 @@ from alz_prog_net.components.progression import (
     DiseaseProgressionDecoder,
     SwiGLU
 )
+from alz_prog_net.components.trajectory import TrajectoryPrediction
 
 
 @keras.saving.register_keras_serializable(
@@ -35,7 +36,19 @@ class AlzProgNet(keras.Model):
         use_time=True,
         use_gate=True,
         use_residual=True,
+
+        use_interaction=True,
+        use_time_modulation=True,
+
         initial_residual_scale=0.1,
+
+        delta_dropout=0.05,
+
+        trajectory_hidden_dims=None,
+        trajectory_num_classes=4,
+        trajectory_dropout=0.1,
+        num_conversion_intervals=3,
+
         output_dim=3,
         **kwargs
     ):
@@ -49,6 +62,7 @@ class AlzProgNet(keras.Model):
         self.num_transformer_layers = num_transformer_layers
         self.num_heads = num_heads
         self.ff_dim = ff_dim
+        self.pooling_hidden_dim=pooling_hidden_dim
         self.modality_dropout = modality_dropout
         self.attention_dropout = attention_dropout
         self.residual_dropout = residual_dropout
@@ -60,6 +74,16 @@ class AlzProgNet(keras.Model):
         self.use_time = use_time
         self.use_gate = use_gate
         self.use_residual = use_residual
+        self.use_interaction=use_interaction
+        self.use_time_modulation=use_time_modulation
+
+        self.delta_dropout=delta_dropout
+
+        self.trajectory_hidden_dims=trajectory_hidden_dims
+        self.trajectory_num_classes=trajectory_num_classes
+        self.trajectory_dropout=trajectory_dropout
+        self.num_conversion_intervals=num_conversion_intervals
+
         self.initial_residual_scale = initial_residual_scale
         self.output_dim = output_dim
 
@@ -96,7 +120,6 @@ class AlzProgNet(keras.Model):
         # self.transformer_norm = layers.LayerNormalization()
         # self.flattern = layers.Flatten()
         
-        self.pooling_hidden_dim = pooling_hidden_dim
         self.attention_pooling = AttentionPooling(
             dim=self.modality_output_dim,
             hidden_dim=self.pooling_hidden_dim,
@@ -114,6 +137,15 @@ class AlzProgNet(keras.Model):
             output_dim=self.latent_dim
         )
 
+        # Trajectory + conversion branch
+        self.trajectory_branch = TrajectoryPrediction(
+            hidden_dims=self.trajectory_hidden_dims,
+            num_trajectory_classes=self.trajectory_num_classes,
+            num_conversion_intervals=self.num_conversion_intervals,
+            dropout_rate=self.trajectory_dropout,
+            name="trajectory_branch"
+        )
+
         # --------------------------------------------------
         # Disease progression decoder
         # --------------------------------------------------
@@ -129,6 +161,10 @@ class AlzProgNet(keras.Model):
             use_time=self.use_time,
             use_gate=self.use_gate,
             use_residual=self.use_residual,
+            use_interaction=self.use_interaction,
+            use_time_modulation=self.use_time_modulation,
+            use_trajectory_context=True,
+            delta_dropout=self.delta_dropout,
             initial_residual_scale=self.initial_residual_scale,
             name="disease_progression"
         )
@@ -137,7 +173,7 @@ class AlzProgNet(keras.Model):
         self,
         inputs,
         training=None,
-        return_latent=False
+        return_details=False
     ):
         modality_embeddings = []
 
@@ -173,18 +209,21 @@ class AlzProgNet(keras.Model):
 
         latent = self.latent_projection(x)
 
+        # auxiliary trajectory branch
+        trajectory_output = self.trajectory_branch(latent, training=training)
+        trajectory_context = trajectory_output["representation"]
+
+        # main progression decoder
         predictions = self.disease_progression(
-            latent,
+            (latent, trajectory_context),
             training=training
         )
 
-        if return_latent:
-            return {
-                "predictions": predictions,
-                "latent": latent
-            }
-
-        return predictions
+        return {
+            "predictions": predictions,
+            "trajectory": trajectory_output["trajectory_probabilities"],
+            "conversion_hazard": trajectory_output["conversion_hazard"],
+        }
 
     # ======================================================
     # Keras serialization
@@ -211,8 +250,15 @@ class AlzProgNet(keras.Model):
             "n_time_frequencies": self.n_time_frequencies,
             "use_time": self.use_time,
             "use_gate": self.use_gate,
+            "use_interaction": self.use_interaction,
+            "use_time_modulation": self.use_time_modulation,
             "use_residual": self.use_residual,
             "initial_residual_scale": self.initial_residual_scale,
+            "delta_dropout": self.delta_dropout,
+            "trajectory_hidden_dims": self.trajectory_hidden_dims,
+            "trajectory_num_classes": self.trajectory_num_classes,
+            "trajectory_dropout": self.trajectory_dropout,
+            "num_conversion_intervals": self.num_conversion_intervals,
             "output_dim": self.output_dim,
         })
 

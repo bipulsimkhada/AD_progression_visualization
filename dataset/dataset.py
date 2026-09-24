@@ -29,17 +29,60 @@ def create_dataset():
 
 def createOutputLabels(Labels):
     Labels = Labels[targets]
-    
-    output = np.zeros((len(Labels), 4, 3))
-    
-    for i in range(len(Labels)):
-        for j in range(4):
-            if Labels.iloc[i, j] == 'CN':
-                output[i, j, 0] = 1
-            elif Labels.iloc[i, j] == 'MCI':
-                output[i, j, 1] = 1
-            elif Labels.iloc[i, j] == 'AD':
-                output[i, j, 2] = 1
-                
-    return output
 
+    n_samples = len(Labels)
+    class_map = {
+        "CN": 0,
+        "MCI": 1,
+        "AD": 2,
+    }
+
+    output = np.empty((n_samples, 3), dtype=object)
+
+    for i in range(n_samples):
+        states = np.zeros(4, dtype=np.int32)
+        prediction = np.zeros((4,3), dtype=np.float32)
+
+        for j in range(4):
+            label = Labels.iloc[i,j]
+            class_index = class_map[label]
+            states[j] = class_index
+
+            prediction[j, class_index] = 1.0
+
+        #transitions
+        delta = np.diff(states)
+        has_forward = np.any(delta > 0)
+        has_reverse = np.any(delta < 0)
+
+        trajectory = np.zeros(4, dtype=np.float32)
+
+        if (not has_forward and not has_reverse):
+            trajectory_class = 0
+        elif has_forward and not has_reverse:
+            trajectory_class = 1
+        elif not has_forward and has_reverse:
+            trajectory_class = 2
+        else:
+            trajectory_class = 3
+
+        trajectory[trajectory_class] = 1.0
+
+        # conversion
+        conversion = np.zeros((3, 2), dtype=np.float32)
+        forward_indices = np.where(delta > 0)[0]
+
+        if len(forward_indices) == 0:
+            conversion[:, 0] = 0.0
+            conversion[:, 1] = 1.0
+        else:
+            first_conversion = forward_indices[0]
+
+            conversion[:first_conversion + 1, 1] = 1.0,
+            conversion[first_conversion, 0] = 1.0
+
+        output[i, 0] = prediction
+        output[i, 1] = trajectory
+        output[i, 2] = conversion
+
+    return output

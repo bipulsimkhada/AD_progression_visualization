@@ -211,3 +211,59 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         return config
 
 
+@keras.saving.register_keras_serializable(
+    package="AlzProgNet"
+)
+class DiscreteTimeConversionLoss(
+    keras.losses.Loss
+):
+    # y_true is (B, 3, 2)
+    # [..., 0]: event indicator
+    # [..., 1]: at-risk indicator
+    # y_pred: (B, intervals) first conversion probabilities
+    def __init__(
+        self,
+        epsilon=1e-7,
+        name="discrete-time-conversion_loss",
+        reduction="sum_over_batch_size",
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.epsilon = float(epsilon)
+
+    def call(self, y_true, y_pred):
+        y_true = ops.cast(y_true, "float32")
+        y_pred = ops.cast(y_pred, "flaot32")
+
+        event = y_true[..., 0]
+        at_risk = y_true[..., 1]
+
+        hazard = ops.clip(y_pred, self.epsilon, 1.0 - self.epsilon)
+
+        interval_loss = -(
+            event * ops.log(hazard) +
+            (1.0 - event) * ops.log(1.0 - hazard)
+        )
+
+        # ignore intervals after first conversion
+        interval_loss = interval_loss * at_risk
+
+        denominator = ops.maximum(
+            ops.sum(at_risk, axis=-1),
+            1.0
+        )
+
+        loss_per_sample = (
+            ops.sum(interval_loss, axis=-1) / denominator
+        )
+
+        return loss_per_sample
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "epsilon": self.epsilon,
+        })
+
+        return config
+
