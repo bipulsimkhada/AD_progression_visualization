@@ -233,7 +233,7 @@ class DiscreteTimeConversionLoss(
 
     def call(self, y_true, y_pred):
         y_true = ops.cast(y_true, "float32")
-        y_pred = ops.cast(y_pred, "flaot32")
+        y_pred = ops.cast(y_pred, "float32")
 
         event = y_true[..., 0]
         at_risk = y_true[..., 1]

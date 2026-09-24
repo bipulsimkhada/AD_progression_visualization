@@ -99,18 +99,16 @@ def cross_validation(
 
         y_train = y[train_idx]
         y_train = {
-            "prediction": np.stack(y_train[:, 0]),
+            "predictions": np.stack(y_train[:, 0]),
             "trajectory": np.stack(y_train[:, 1]),
             "conversion_hazard": np.stack(y_train[:, 2]),
         }
         y_val = y[val_idx]
         y_val = {
-            "prediction": np.stack(y_val[:, 0]),
+            "predictions": np.stack(y_val[:, 0]),
             "trajectory": np.stack(y_val[:, 1]),
             "conversion_hazard": np.stack(y_val[:, 2]),
         }
-
-        print("trajectory", type(y_train["trajectory"]), y_train["trajectory"].shape, y_train["trajectory"][0], (y_train["trajectory"][0].dtype))
 
 
         # --------------------------------------------------------------
@@ -147,9 +145,9 @@ def cross_validation(
         # Fold-specific class weights
         # --------------------------------------------------------------
 
-        class_weights = compute_time_class_weights(y_train["prediction"])
+        class_weights = compute_time_class_weights(y_train["predictions"])
 
-        fold_model = AlzProgNet(
+        alz_prog_net = AlzProgNet(
             num_modalities=5,
             modalities_hidden_dims=[32, 256],
             modality_output_dim=128,
@@ -179,24 +177,23 @@ def cross_validation(
             output_dim=3
         )
 
-        inputs = [
-            keras.Input(
-                shape=(MODALITIES[m][0],),
-                name=f"modality_{i}",
-            )
-            for i, m in enumerate(combo)
-            if m in MODALITIES
-        ]
+        # inputs = [
+        #     keras.Input(
+        #         shape=(MODALITIES[m][0],),
+        #         name=f"modality_{i}",
+        #     )
+        #     for i, m in enumerate(combo)
+        #     if m in MODALITIES
+        # ]
 
-        outputs = fold_model(inputs)
+        # outputs = fold_model(inputs)
 
-        alz_prog_net = keras.Model(
-            inputs=inputs,
-            outputs=outputs,
-            name="AlzProgNet",
-        )
+        # alz_prog_net = keras.Model(
+        #     inputs=inputs,
+        #     outputs={outputs,
+        #     name="AlzProgNet",
+        # )
 
-        print("output names", alz_prog_net.output_names)
 
         # --------------------------------------------------------------
         # Loss
@@ -322,7 +319,7 @@ def cross_validation(
         # --------------------------------------------------------------
 
         results = evaluate_model(
-            y_val,
+            y_val["predictions"],
             y_pred["predictions"],
         )
 

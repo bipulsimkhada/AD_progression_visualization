@@ -5,7 +5,7 @@ from alz_prog_net.components.progression import SwiGLU
 @keras.saving.register_keras_serializable(
     package="DiseaseProgression"
 )
-class TrajectoryPrediction(keras.Model):
+class TrajectoryPrediction(keras.layers.Layer):
     """
     Auxiliary trajectory prediction branch.
 

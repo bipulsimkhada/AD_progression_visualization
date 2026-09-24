@@ -44,7 +44,7 @@ class SwiGLU(layers.Layer):
 @keras.saving.register_keras_serializable(
     package="DiseaseProgression"
 )
-class FourierTimeEncoder(keras.Model):
+class FourierTimeEncoder(keras.layers.Layer):
     def __init__(
         self,
         time_dim=16,
@@ -436,7 +436,7 @@ class TemporalProgressionBlock(layers.Layer):
 @keras.saving.register_keras_serializable(
     package="DiseaseProgression"
 )
-class DiseaseProgressionDecoder(keras.Model):
+class DiseaseProgressionDecoder(keras.layers.Layer):
     def __init__(
         self,
         latent_dim=256,

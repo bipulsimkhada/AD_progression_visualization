@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 
 @keras.saving.register_keras_serializable(package="CustomLayers")
-class ModalityEncoder(keras.Model):
+class ModalityEncoder(keras.layers.Layer):
     """
     MLP-based modality encoder.
 
