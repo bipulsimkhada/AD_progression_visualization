@@ -267,3 +267,39 @@ class DiscreteTimeConversionLoss(
 
         return config
 
+@keras.saving.register_keras_serializable(package="Custom")
+class WeightedBinaryCrossentropy(keras.losses.Loss):
+
+    def __init__(
+        self,
+        converter_weight=3.0,
+        name="weighted_binary_crossentropy",
+        **kwargs,
+    ):
+        super().__init__(name=name, **kwargs)
+        self.converter_weight = converter_weight
+
+    def call(self, y_true, y_pred):
+        # Per-example BCE
+        y_true = keras.ops.expand_dims(y_true, axis=-1)
+        
+        bce = keras.losses.binary_crossentropy(
+            y_true,
+            y_pred,
+        )
+
+        # Weight class 1 (conversion) more heavily.
+        weights = (
+            1.0
+            + (self.converter_weight - 1.0) * y_true
+        )
+
+        return bce * weights
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "converter_weight": self.converter_weight,
+        })
+        return config
+

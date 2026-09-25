@@ -45,7 +45,7 @@ class AlzProgNet(keras.Model):
         delta_dropout=0.05,
 
         trajectory_hidden_dims=None,
-        trajectory_num_classes=4,
+        trajectory_num_classes=1,
         trajectory_dropout=0.1,
         num_conversion_intervals=3,
 
@@ -211,7 +211,7 @@ class AlzProgNet(keras.Model):
 
         # auxiliary trajectory branch
         trajectory_output = self.trajectory_branch(latent, training=training)
-        trajectory_context = trajectory_output["representation"]
+        trajectory_context = ops.stop_gradient(trajectory_output["representation"])
 
         # main progression decoder
         predictions = self.disease_progression(

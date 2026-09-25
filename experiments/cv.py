@@ -1,3 +1,4 @@
+from calendar import c
 import os
 import json
 import gc
@@ -14,9 +15,9 @@ from sklearn.pipeline import Pipeline
 
 from alz_prog_net.model import AlzProgNet
 from utils import compute_time_class_weights
-from alz_prog_net.loss import LongitudinalTransitionLoss, DiscreteTimeConversionLoss
+from alz_prog_net.loss import LongitudinalTransitionLoss, DiscreteTimeConversionLoss, WeightedBinaryCrossentropy
 from alz_prog_net.metrics import grouped_categorical_accuracy
-from alz_prog_net.eval import evaluate_model
+from alz_prog_net.eval import evaluate_model, evaluate_auxiliary_matrices
 from experiments.constants import MODALITIES
 from utils import split_modalities
 
@@ -43,6 +44,7 @@ def cross_validation(
     stable_transition_weight=0.5,
     converter_transition_weight=3.0,
     converter_sample_weight=1.5,
+    auxilary_converter_weight=7,
     from_logits=False,
 ):
     """
@@ -171,7 +173,7 @@ def cross_validation(
             delta_dropout=0.05,
             
             trajectory_hidden_dims=(256, 64, 32),
-            trajectory_num_classes=4,
+            trajectory_num_classes=1,
             trajectory_dropout=0.1,
             num_conversion_intervals=3,
             output_dim=3
@@ -213,13 +215,15 @@ def cross_validation(
             converter_sample_weight=converter_sample_weight,
         )
 
+        loss_trajectory = WeightedBinaryCrossentropy(converter_weight=auxilary_converter_weight)
+
         optimizer = keras.optimizers.AdamW()
 
         alz_prog_net.compile(
             optimizer=optimizer,
             loss={
                 "predictions": loss_fn,
-                "trajectory": keras.losses.CategoricalCrossentropy(),
+                "trajectory": keras.losses.BinaryCrossentropy(),
                 "conversion_hazard": DiscreteTimeConversionLoss()
             },
             loss_weights={
@@ -322,13 +326,14 @@ def cross_validation(
             y_val["predictions"],
             y_pred["predictions"],
         )
-
+        auxiliary_result = evaluate_auxiliary_matrices(y_val, y_pred)
         # --------------------------------------------------------------
         # Add training / CV metadata
         # --------------------------------------------------------------
 
         results = {
             **results,
+            "auxiliary_result": auxiliary_result,
 
             # Fold information
             "fold": fold,
@@ -408,7 +413,7 @@ def cross_validation(
 
         #clean up
         del alz_prog_net
-        del fold_model
+        # del fold_model
         del loss_fn
         del optimizer
         del history

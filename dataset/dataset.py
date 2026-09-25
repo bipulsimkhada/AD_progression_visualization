@@ -55,18 +55,10 @@ def createOutputLabels(Labels):
         has_forward = np.any(delta > 0)
         has_reverse = np.any(delta < 0)
 
-        trajectory = np.zeros(4, dtype=np.float32)
-
         if (not has_forward and not has_reverse):
-            trajectory_class = 0
-        elif has_forward and not has_reverse:
-            trajectory_class = 1
-        elif not has_forward and has_reverse:
-            trajectory_class = 2
+            trajectory = 0
         else:
-            trajectory_class = 3
-
-        trajectory[trajectory_class] = 1.0
+            trajectory = 1
 
         # conversion
         conversion = np.zeros((3, 2), dtype=np.float32)

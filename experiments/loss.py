@@ -91,6 +91,7 @@ def run_cv(
             stable_transition_weight=config["stable_transition_weight"],
             converter_transition_weight=config["converter_transition_weight"],
             converter_sample_weight=config["converter_sample_weight"],
+            auxilary_converter_weight=config["auxilary_converter_weight"],
             from_logits=False,
         )
 

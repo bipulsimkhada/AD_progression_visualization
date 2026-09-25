@@ -222,6 +222,7 @@ LOSS_SEARCH_STAGES = {
             "converter_transition_weight": 3.0,
             "converter_sample_weight": 2,
             "huber_delta": 1.0,
+            "auxilary_converter_weight": 7,
         },
         {
             "name": "s4_loss_huber",
@@ -233,6 +234,7 @@ LOSS_SEARCH_STAGES = {
             "converter_transition_weight": 3.0,
             "converter_sample_weight": 2,
             "huber_delta": 1.0,
+            "auxilary_converter_weight": 7
         },
     ]
 }

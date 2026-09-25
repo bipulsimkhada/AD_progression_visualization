@@ -12,9 +12,7 @@ class TrajectoryPrediction(keras.layers.Layer):
     Predicts:
     1. Trajectory class
         0 = stable
-        1 = forward_progressive
-        2 = reverter
-        3 = fluctuate
+        1 = converter - progressie, reverter, or fluctater
     
     2. Discrete-time first-conversion hazard
         interval 0: 0 -> 6 months
@@ -25,7 +23,7 @@ class TrajectoryPrediction(keras.layers.Layer):
     def __init__(
         self,
         hidden_dims=(128, 64, 32),
-        num_trajectory_classes=4,
+        num_trajectory_classes=1,
         num_conversion_intervals=3,
         dropout_rate=0.1,
         **kwargs,
@@ -50,7 +48,7 @@ class TrajectoryPrediction(keras.layers.Layer):
 
             self.hidden_layers.append(block)
 
-        self.trajectory_classifier = layers.Dense(self.num_trajectory_classes, name="trajectory_logits")
+        self.trajectory_classifier = layers.Dense(self.num_trajectory_classes, activation="sigmoid", name="trajectory_probability")
         self.conversion_hazard_head = layers.Dense(self.num_conversion_intervals, activation="sigmoid", name="conversion_hazard")
 
     def call(self, inputs, training=None):
@@ -62,8 +60,7 @@ class TrajectoryPrediction(keras.layers.Layer):
             hidden_states.append(x)
 
         representation = x
-        trajectory_logits = self.trajectory_classifier(representation)
-        trajectory_probabilities = ops.softmax(trajectory_logits, axis=-1)
+        trajectory_probabilities = self.trajectory_classifier(representation)
 
         hazard = self.conversion_hazard_head(representation)
         survival = ops.cumprod(

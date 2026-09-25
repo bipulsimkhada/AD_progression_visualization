@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
 CLASS_NAMES = ["CN", "MCI", "AD"]
@@ -799,4 +800,113 @@ def evaluate_model(
                 mixed_converter_mask.sum()
             ),
         },
+    }
+
+def evaluate_auxiliary_matrices(y_true, y_pred, threshold=0.5):
+
+    # =========================================================
+    # Trajectory
+    # =========================================================
+
+    true_trajectory = y_true["trajectory"].astype(int).reshape(-1)
+    pred_trajectory_prob = y_pred["trajectory"].reshape(-1) 
+    pred_trajectory = (
+        pred_trajectory_prob >= 0.5
+    ).astype(int)
+
+    trajectory_cm = confusion_matrix(
+        true_trajectory,
+        pred_trajectory,
+        labels=[0, 1]
+    )
+
+    # =========================================================
+    # Conversion
+    # =========================================================
+
+    true_hazard = np.asarray(
+        y_true["conversion_hazard"]
+    )  # (N, 3, 2)
+
+    pred_hazard = np.asarray(
+        y_pred["conversion_hazard"]
+    )  # (N, 3)
+
+    # True: take class 0 = conversion probability
+    true_conversion_prob = true_hazard[:, :, 0]  # (N, 3)
+
+    # Prediction is already probability for conversion
+    pred_conversion_prob = pred_hazard  # (N, 3)
+
+    # =========================================================
+    # Determine conversion time
+    # =========================================================
+
+    conversion_months = np.array([6, 12, 24])
+
+    # True conversion
+    true_converted = true_conversion_prob >= 0.5
+
+    true_has_conversion = true_converted.any(axis=1)
+
+    true_first_conversion = np.argmax(
+        true_converted,
+        axis=1
+    )
+
+    # Predicted conversion
+    pred_converted = pred_conversion_prob >= threshold
+
+    pred_has_conversion = pred_converted.any(axis=1)
+
+    pred_first_conversion = np.argmax(
+        pred_converted,
+        axis=1
+    )
+
+    # 0 = no conversion
+    true_conversion_time = np.zeros(
+        len(true_hazard),
+        dtype=np.int32
+    )
+
+    pred_conversion_time = np.zeros(
+        len(pred_hazard),
+        dtype=np.int32
+    )
+
+    true_conversion_time[true_has_conversion] = (
+        conversion_months[
+            true_first_conversion[true_has_conversion]
+        ]
+    )
+
+    pred_conversion_time[pred_has_conversion] = (
+        conversion_months[
+            pred_first_conversion[pred_has_conversion]
+        ]
+    )
+
+    # =========================================================
+    # Conversion-time confusion matrix
+    # =========================================================
+
+    conversion_cm = confusion_matrix(
+        true_conversion_time,
+        pred_conversion_time,
+        labels=[0, 6, 12, 24]
+    )
+
+    return {
+        "trajectory_cm": trajectory_cm.tolist(),
+        "conversion_cm": conversion_cm.tolist(),
+
+        "true_trajectory": true_trajectory.tolist(),
+        "pred_trajectory": pred_trajectory_prob.tolist(),
+
+        "true_conversion_time": true_conversion_time.tolist(),
+        "pred_conversion_time": pred_conversion_time.tolist(),
+
+        "true_conversion_prob": true_conversion_prob.tolist(),
+        "pred_conversion_prob": pred_conversion_prob.tolist(),
     }
