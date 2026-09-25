@@ -36,15 +36,12 @@ def cross_validation(
     epochs=250,
     batch_size=32,
     time_weights=None,
-    severity_matrix=None,
-    severity_weight=0.5,
     transition_weight=1.0,
     transition_loss="huber",
     huber_delta=1.0,
     stable_transition_weight=0.5,
     converter_transition_weight=3.0,
     converter_sample_weight=1.5,
-    auxilary_converter_weight=7,
     from_logits=False,
 ):
     """
@@ -57,13 +54,6 @@ def cross_validation(
 
     if time_weights is None:
         time_weights = [0.75, 1.0, 1.5, 1.25]
-
-    if severity_matrix is None:
-        severity_matrix = [
-            [0.0, 0.5, 2.0],
-            [0.5, 0.0, 1.0],
-            [2.0, 1.0, 0.0],
-        ]
 
     # ------------------------------------------------------------------
     # Directories
@@ -102,14 +92,14 @@ def cross_validation(
         y_train = y[train_idx]
         y_train = {
             "predictions": np.stack(y_train[:, 0]),
-            "trajectory": np.stack(y_train[:, 1]),
-            "conversion_hazard": np.stack(y_train[:, 2]),
+            # "trajectory": np.stack(y_train[:, 1]),
+            # "conversion_hazard": np.stack(y_train[:, 2]),
         }
         y_val = y[val_idx]
         y_val = {
             "predictions": np.stack(y_val[:, 0]),
-            "trajectory": np.stack(y_val[:, 1]),
-            "conversion_hazard": np.stack(y_val[:, 2]),
+            # "trajectory": np.stack(y_val[:, 1]),
+            # "conversion_hazard": np.stack(y_val[:, 2]),
         }
 
 
@@ -171,11 +161,6 @@ def cross_validation(
 
             initial_residual_scale=0.25,
             delta_dropout=0.05,
-            
-            trajectory_hidden_dims=(256, 64, 32),
-            trajectory_num_classes=1,
-            trajectory_dropout=0.1,
-            num_conversion_intervals=3,
             output_dim=3
         )
 
@@ -204,8 +189,6 @@ def cross_validation(
         loss_fn = LongitudinalTransitionLoss(
             class_weights=class_weights,
             time_weights=time_weights,
-            severity_matrix=severity_matrix,
-            severity_weight=severity_weight,
             transition_weight=transition_weight,
             transition_loss=transition_loss,
             huber_delta=huber_delta,
@@ -215,21 +198,15 @@ def cross_validation(
             converter_sample_weight=converter_sample_weight,
         )
 
-        loss_trajectory = WeightedBinaryCrossentropy(converter_weight=auxilary_converter_weight)
-
         optimizer = keras.optimizers.AdamW()
 
         alz_prog_net.compile(
             optimizer=optimizer,
             loss={
                 "predictions": loss_fn,
-                "trajectory": keras.losses.BinaryCrossentropy(),
-                "conversion_hazard": DiscreteTimeConversionLoss()
             },
             loss_weights={
                 "predictions": 1.0,
-                "trajectory": 0.5,
-                "conversion_hazard": 0.25,
             },
             metrics={
                 "predictions": [grouped_categorical_accuracy],
@@ -326,14 +303,13 @@ def cross_validation(
             y_val["predictions"],
             y_pred["predictions"],
         )
-        auxiliary_result = evaluate_auxiliary_matrices(y_val, y_pred)
+
         # --------------------------------------------------------------
         # Add training / CV metadata
         # --------------------------------------------------------------
 
         results = {
             **results,
-            "auxiliary_result": auxiliary_result,
 
             # Fold information
             "fold": fold,
@@ -354,8 +330,6 @@ def cross_validation(
 
             # Loss configuration
             "time_weights": time_weights,
-            "severity_matrix": severity_matrix,
-            "severity_weight": severity_weight,
             "transition_weight": transition_weight,
             "transition_loss": transition_loss,
             "huber_delta": huber_delta,

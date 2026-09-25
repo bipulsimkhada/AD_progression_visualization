@@ -83,15 +83,12 @@ def run_cv(
             epochs=EPOCHS,
             batch_size=BATCH_SIZE,
             time_weights=config["time_weights"],
-            severity_matrix=SEVERITY_MATRIX,
-            severity_weight=config["severity_weight"],
             transition_weight=config["transition_weight"],
             transition_loss=config["transition_loss"],
             huber_delta=config["huber_delta"],
             stable_transition_weight=config["stable_transition_weight"],
             converter_transition_weight=config["converter_transition_weight"],
             converter_sample_weight=config["converter_sample_weight"],
-            auxilary_converter_weight=config["auxilary_converter_weight"],
             from_logits=False,
         )
 

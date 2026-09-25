@@ -7,8 +7,6 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         self,
         class_weights,
         time_weights=None,
-        severity_matrix=None,
-        severity_weight=0.25,
         transition_weight=0.25,
         transition_loss="huber",
         huber_delta=1.0,
@@ -33,19 +31,6 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
 
         self.time_weights = list(time_weights)
 
-        #severity matrix where rows = true class, cols = predicted class
-        if severity_matrix is None:
-            severity_matrix = [
-                [0.0, 0.5, 2.0],
-                [0.5, 0.0, 1.0],
-                [2.0, 1.0, 0.0],
-            ]
-
-        self.severity_matrix = [
-            list(row) for row in severity_matrix 
-        ]
-
-        self.severity_weight = float(severity_weight)
         self.transition_weight = float(transition_weight)
         self.stable_transition_weight = float(stable_transition_weight)
         self.converter_transition_weight = float(converter_transition_weight)
@@ -63,7 +48,6 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
 
         class_weights = ops.convert_to_tensor(self.class_weights, dtype="float32")
         time_weights = ops.convert_to_tensor(self.time_weights, dtype="float32")
-        severity_matrix = ops.convert_to_tensor(self.severity_matrix, dtype="float32")
         class_values = ops.convert_to_tensor(
             [0.0, 1.0, 2.0],
             dtype="float32"
@@ -95,22 +79,6 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
             axis=-1
         )
         weighted_cce = cce * sample_class_weights
-
-        # severity penalty
-        # (N, 4, 3)
-        true_severity_cost = ops.take(
-            severity_matrix,
-            true_class,
-            axis=0
-        )
-
-        severity_loss = ops.sum(
-            probabilities * true_severity_cost,
-            axis=-1
-        )
-
-        #apply class balancing
-        severity_loss = severity_loss * sample_class_weights
 
         #expected disease state
         expected_state = ops.sum(
@@ -174,8 +142,6 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         total_loss = (
             weighted_cce
             +
-            self.severity_weight * severity_loss
-            +
             self.transition_weight * transition_loss
         )
 
@@ -197,8 +163,6 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         config.update({
             "class_weights": self.class_weights,
             "time_weights": self.time_weights,
-            "severity_matrix": self.severity_matrix,
-            "severity_weight": self.severity_weight,
             "transition_weight": self.transition_weight,
             "transition_loss": self.transition_loss,
             "huber_delta": self.huber_delta,
@@ -224,12 +188,14 @@ class DiscreteTimeConversionLoss(
     def __init__(
         self,
         epsilon=1e-7,
+        converter_weight=3.0,
         name="discrete-time-conversion_loss",
         reduction="sum_over_batch_size",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.epsilon = float(epsilon)
+        self.converter_weight = float(converter_weight)
 
     def call(self, y_true, y_pred):
         y_true = ops.cast(y_true, "float32")
@@ -257,7 +223,11 @@ class DiscreteTimeConversionLoss(
             ops.sum(interval_loss, axis=-1) / denominator
         )
 
-        return loss_per_sample
+        converter_mask = ops.cast(ops.sum(event, axis=-1) > 0, "float32")
+
+        sample_weight = 1.0 + converter_mask * (self.converter_weight - 1.0)
+
+        return loss_per_sample * sample_weight
 
     def get_config(self):
         config = super().get_config()

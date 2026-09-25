@@ -183,7 +183,6 @@ class TemporalProgressionBlock(layers.Layer):
         use_residual=True,
         use_interaction=True,
         use_time_modulation=True,
-        use_trajectory_context=True,
         delta_dropout=0.0,
         initial_residual_scale=0.1,
         **kwargs
@@ -201,7 +200,6 @@ class TemporalProgressionBlock(layers.Layer):
 
         self.use_interaction = use_interaction
         self.use_time_modulation = use_time_modulation
-        self.use_trajectory_context = use_trajectory_context
 
 
         self.initial_residual_scale = (
@@ -217,11 +215,6 @@ class TemporalProgressionBlock(layers.Layer):
         self.context_projection_1 = layers.Dense(self.context_hidden_dim, activation="gelu", name="context_projection_1")
         self.context_projection_2 = layers.Dense(self.state_dim, activation="gelu", name="context_projection_2")
         self.context_norm = layers.LayerNormalization(name="context_norm")
-
-        if self.use_trajectory_context:
-            self.trajectory_norm = layers.LayerNormalization(name="trajectory_norm")
-            self.trajectory_projection = layers.Dense(self.state_dim, activation="gelu", name="trajectory_projection")
-            self.trajectory_modulation = layers.Dense(self.state_dim, activation="sigmoid", name="trajectory_modulation")
 
         if self.use_time and self.use_time_modulation:
             self.time_modulation = layers.Dense(self.state_dim, activation="sigmoid", name="time_modulation")
@@ -267,36 +260,20 @@ class TemporalProgressionBlock(layers.Layer):
         training=None,
     ):
         if self.use_time:
-            if self.use_trajectory_context:
-                (
-                    current_input,
-                    previous_state,
-                    time_embedding,
-                    trajectory_context,
-                ) = inputs
-            else:
-                (
-                    current_input,
-                    previous_state,
-                    time_embedding,
-                ) = inputs
+            
+            (
+                current_input,
+                previous_state,
+                time_embedding,
+            ) = inputs
 
-                trajectory_context = None
 
         else:
-            if self.use_trajectory_context:
-                (
-                    current_input,
-                    previous_state,
-                    trajectory_context
-                ) = inputs
-            else:
-                (
-                    current_input,
-                    previous_state
-                ) = inputs
 
-                trajectory_context
+            (
+                current_input,
+                previous_state
+            ) = inputs
 
             time_embedding = None
 
@@ -324,16 +301,6 @@ class TemporalProgressionBlock(layers.Layer):
             time_scale = None
             temporal_difference = feature_difference
 
-        if self.use_trajectory_context:
-            trajectory_features = self.trajectory_norm(trajectory_context)
-            trajectory_features = self.trajectory_projection(trajectory_features)
-            trajectory_scale = self.trajectory_modulation(trajectory_features)
-            trajectory_difference = feature_difference * trajectory_scale
-        else:
-            trajectory_features = None
-            trajectory_scale = None
-            trajectory_difference = None
-
         delta_inputs = [
             previous_features,
             context,
@@ -348,11 +315,6 @@ class TemporalProgressionBlock(layers.Layer):
             delta_inputs.append(
                 time_embedding
             )
-
-        if self.use_trajectory_context:
-            delta_inputs.extend([
-                trajectory_features, trajectory_difference
-            ])
 
         delta_input = ops.concatenate(delta_inputs, axis=-1)
 
@@ -381,8 +343,6 @@ class TemporalProgressionBlock(layers.Layer):
             if self.use_time:
                 gate_inputs.append(time_embedding)
 
-            if self.use_trajectory_context:
-                gate_inputs.append(trajectory_features)
 
             gate_input = ops.concatenate(
                 gate_inputs,
@@ -425,7 +385,6 @@ class TemporalProgressionBlock(layers.Layer):
             "use_residual": self.use_residual,
             "use_interaction": self.use_interaction,
             "use_time_modulation": self.use_time_modulation,
-            "use_trajectory_context": self.use_trajectory_context,
             "initial_residual_scale": self.initial_residual_scale,
             "delta_dropout": self.delta_dropout_rate
         })
@@ -451,7 +410,6 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
         use_residual=True,
         use_interaction=True,
         use_time_modulation=True,
-        use_trajectory_context=True,
         delta_dropout=0.5,
         initial_residual_scale=0.1,
         **kwargs
@@ -472,7 +430,6 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
         self.use_residual = use_residual
         self.use_interaction = use_interaction
         self.use_time_modulation = use_time_modulation
-        self.use_trajectory_context = use_trajectory_context
 
         self.initial_residual_scale = float(initial_residual_scale)
         self.delta_dropout = float(delta_dropout)
@@ -527,7 +484,6 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
                     use_residual=use_residual,
                     use_interaction=use_interaction,
                     use_time_modulation=use_time_modulation,
-                    use_trajectory_context=use_trajectory_context,
                     delta_dropout=delta_dropout,
                     initial_residual_scale=initial_residual_scale,
                     name = f"temporal_level_{level}_dim_{hidden_dim}"
@@ -583,11 +539,8 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
         training=None,
         return_details=False
     ):
-        if self.use_trajectory_context:
-            (z, trajectory_context) = inputs
-        else:
-            z = inputs
-            trajectory_context = None
+            
+        z = inputs
 
         baseline_states = []
         x = z
@@ -637,25 +590,11 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
                 temporal_block = self.temporal_blocks[level]
 
                 if temporal_block is not None:
-                    if self.use_time and self.use_trajectory_context:
+                    if self.use_time:
                         block_input = (
                             vertical_input,
                             previous_state,
                             time_embedding,
-                            trajectory_context,
-                        )
-                    elif self.use_time:
-                        block_input = (
-                            vertical_input,
-                            previous_state,
-                            time_embedding,
-                        )
-
-                    elif self.use_trajectory_context:
-                        block_input = (
-                            vertical_input,
-                            previous_state,
-                            trajectory_context,
                         )
                     else:
                         block_input = (
@@ -712,7 +651,6 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
             "use_residual": self.use_residual,
             "use_interaction": self.use_interaction,
             "use_time_modulation": self.use_time_modulation,
-            "use_trajectory_context": self.use_trajectory_context,
             "delta_dropout": self.delta_dropout_rate,
             "initial_residual_scale": self.initial_residual_scale
         })
