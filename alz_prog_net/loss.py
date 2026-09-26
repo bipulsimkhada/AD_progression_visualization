@@ -6,8 +6,9 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
     def __init__(
         self,
         class_weights,
-        time_weights=None,
-        transition_weight=0.25,
+        stable_time_weights=None,
+        converter_time_weights=None,
+        transition_loss_weight=0.25,
         transition_loss="huber",
         huber_delta=1.0,
         stable_transition_weight=1.0,
@@ -25,13 +26,16 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
             raise ValueError("class_weights must be passed")
         self.class_weights = class_weights
 
-        #time weights [T0, T6, T12, T24]
-        if time_weights is None:
-            time_weights = [1.0, 1.0, 1.0, 1.0]
+        if stable_time_weights is None:
+            stable_time_weights = [1.0, 1.0, 1.0, 1.0]
 
-        self.time_weights = list(time_weights)
+        if converter_time_weights is None:
+            converter_time_weights = [1.0, 1.0, 1.0, 1.0]
 
-        self.transition_weight = float(transition_weight)
+        self.stable_time_weights = list(stable_time_weights)
+        self.converter_time_weights = list(converter_time_weights)
+
+        self.transition_loss_weight = float(transition_loss_weight)
         self.stable_transition_weight = float(stable_transition_weight)
         self.converter_transition_weight = float(converter_transition_weight)
         self.converter_sample_weight = float(converter_sample_weight)
@@ -47,7 +51,16 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         y_pred = ops.cast(y_pred, "float32")
 
         class_weights = ops.convert_to_tensor(self.class_weights, dtype="float32")
-        time_weights = ops.convert_to_tensor(self.time_weights, dtype="float32")
+
+        stable_time_weights = ops.convert_to_tensor(
+            self.stable_time_weights,
+            dtype="float32"
+        )
+        converter_time_weights = ops.convert_to_tensor(
+            self.converter_time_weights,
+            dtype="float32"
+        )
+
         class_values = ops.convert_to_tensor(
             [0.0, 1.0, 2.0],
             dtype="float32"
@@ -125,6 +138,14 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         )
 
         converter_sample = ops.max(is_conversion_transition, axis=-1) #(N,)
+        converter_mask = ops.expand_dims(converter_sample, axis=-1) #(N, 1)
+
+        #(N, 4)
+        time_weights = (
+            (1.0 - converter_mask) * ops.expand_dims(stable_time_weights, axis=0)
+            +
+            converter_mask * ops.expand_dims(converter_time_weights, axis=0)
+        ) 
         sample_weights = (
             1.0 + 
             converter_sample * (
@@ -142,11 +163,11 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
         total_loss = (
             weighted_cce
             +
-            self.transition_weight * transition_loss
+            self.transition_loss_weight * transition_loss
         )
 
         # time weighing
-        total_loss = total_loss * ops.expand_dims(time_weights, axis=0)
+        total_loss = total_loss * time_weights
 
         # reduce over time (N, 4) to (N, )
         loss_per_sample = ops.mean(
@@ -162,8 +183,9 @@ class LongitudinalTransitionLoss(keras.losses.Loss):
 
         config.update({
             "class_weights": self.class_weights,
-            "time_weights": self.time_weights,
-            "transition_weight": self.transition_weight,
+            "stable_time_weights": self.stable_time_weights,
+            "converter_time_weights": self.converter_time_weights,
+            "transition_loss_weight": self.transition_loss_weight,
             "transition_loss": self.transition_loss,
             "huber_delta": self.huber_delta,
             "stable_transition_weight": self.stable_transition_weight,

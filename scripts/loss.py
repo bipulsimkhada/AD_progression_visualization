@@ -36,7 +36,7 @@ def main():
     print("=" * 80)
 
     sgkf = StratifiedGroupKFold(
-        n_splits=5,
+        n_splits=10,
         shuffle=True,
         random_state=RANDOM_STATE,
     )
@@ -66,7 +66,7 @@ def main():
 
     # evaluate_ensemble("models/loss/s4_loss_mse", X_train, X_test, y_test, metadata_test,
     #                         ("mri", "pet", "cog", "csf", "rf"),
-    #                         "ensemble_test_s4_loss_huber",
+    #                         "ensemble_test_s4_loss_mse",
     #                         "median", "min-max")
 
 

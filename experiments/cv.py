@@ -35,13 +35,14 @@ def cross_validation(
     scaling: Literal["min-max", "standardization"] = "min-max",
     epochs=250,
     batch_size=32,
-    time_weights=None,
-    transition_weight=1.0,
+    transition_loss_weight=1.0,
     transition_loss="huber",
     huber_delta=1.0,
     stable_transition_weight=0.5,
     converter_transition_weight=3.0,
     converter_sample_weight=1.5,
+    stable_time_weights=[1.0, 1.0, 1.0, 1.0],
+    converter_time_weights=[1.0, 1.0, 1.0, 1.0],
     from_logits=False,
 ):
     """
@@ -51,9 +52,6 @@ def cross_validation(
         models/{run_name}/model_{fold}.keras
         results/cv/{run_name}/result_{fold}.json
     """
-
-    if time_weights is None:
-        time_weights = [0.75, 1.0, 1.5, 1.25]
 
     # ------------------------------------------------------------------
     # Directories
@@ -149,7 +147,8 @@ def cross_validation(
             ff_dim=512,
             pooling_hidden_dim=32,
             modality_dropout=0.1,
-            progression_hidden_dims=(256, 128, 32),
+            # progression_hidden_dims=(256, 128, 32),
+            progression_hidden_dims=(256, 128, 16),
             time_points=(0, 6, 12, 24),
             temporal_levels=(True, True, False),
             time_dim=16,
@@ -188,14 +187,15 @@ def cross_validation(
 
         loss_fn = LongitudinalTransitionLoss(
             class_weights=class_weights,
-            time_weights=time_weights,
-            transition_weight=transition_weight,
+            transition_loss_weight=transition_loss_weight,
             transition_loss=transition_loss,
             huber_delta=huber_delta,
             from_logits=from_logits,
             stable_transition_weight=stable_transition_weight,
             converter_transition_weight=converter_transition_weight,
             converter_sample_weight=converter_sample_weight,
+            stable_time_weights=stable_time_weights,
+            converter_time_weights=converter_time_weights,
         )
 
         optimizer = keras.optimizers.AdamW()
@@ -329,8 +329,12 @@ def cross_validation(
             "modalities": list(combo),
 
             # Loss configuration
-            "time_weights": time_weights,
-            "transition_weight": transition_weight,
+            "stable_transition_weight": stable_transition_weight,
+            "converter_transition_weight": converter_transition_weight,
+            "converter_sample_weight": converter_sample_weight,
+            "stable_time_weights": stable_time_weights,
+            "converter_time_weights": converter_time_weights,
+            "transition_loss_weight": transition_loss_weight,
             "transition_loss": transition_loss,
             "huber_delta": huber_delta,
             "from_logits": from_logits,

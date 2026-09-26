@@ -213,14 +213,15 @@ LOSS_SEARCH_STAGES = {
         #     "huber_delta": 1.0,
         # },
         {
-            "name": "s4_loss_mse", 
-            "time_weights": [1.0, 1.0, 1.0, 1.0], # frome stage3
-            "transition_weight": 2.0, # from stage2
+            "name": "s4_loss_mse",
+            "transition_loss_weight": 1.0, # from stage2
             "transition_loss": "mse",
             "stable_transition_weight": 0.5,
-            "converter_transition_weight": 3.0,
-            "converter_sample_weight": 3,
+            "converter_transition_weight": 2.0,
+            "converter_sample_weight": 1.5,
             "huber_delta": 1.0,
+            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
         },
         # {
         #     "name": "s4_loss_huber",
