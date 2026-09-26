@@ -56,15 +56,10 @@ class FourierTimeEncoder(keras.layers.Layer):
         self.time_dim = time_dim
         self.n_frequencies = n_frequencies
 
-        self.projection_1 = layers.Dense(
+        self.projection = layers.Dense(
             time_dim,
             activation="silu",
-            name="time_projection_1"
-        )
-
-        self.projection_2 = layers.Dense(
-            time_dim,
-            name="time_projection_2"
+            name="time_projection"
         )
 
     def call(
@@ -110,11 +105,7 @@ class FourierTimeEncoder(keras.layers.Layer):
             axis=-1
         )
 
-        x = self.projection_1(
-            time_features
-        )
-
-        return self.projection_2(x)
+        return self.projection(time_features)
 
     def get_config(self):
         config = super().get_config()
@@ -176,13 +167,10 @@ class TemporalProgressionBlock(layers.Layer):
     def __init__(
         self,
         state_dim,
-        time_dim=16,
-        context_hidden_dim=None,
         use_time=True,
         use_gate=True,
         use_residual=True,
         use_interaction=True,
-        use_time_modulation=True,
         delta_dropout=0.0,
         initial_residual_scale=0.1,
         **kwargs
@@ -190,16 +178,12 @@ class TemporalProgressionBlock(layers.Layer):
         super().__init__(**kwargs)
 
         self.state_dim = state_dim
-        self.time_dim = time_dim
-
-        self.context_hidden_dim = int(context_hidden_dim) if context_hidden_dim is not None else self.state_dim * 2
 
         self.use_time = use_time
         self.use_gate = use_gate
         self.use_residual = use_residual
 
         self.use_interaction = use_interaction
-        self.use_time_modulation = use_time_modulation
 
 
         self.initial_residual_scale = (
@@ -212,12 +196,8 @@ class TemporalProgressionBlock(layers.Layer):
             name="previous_state_norm"
         )
 
-        self.context_projection_1 = layers.Dense(self.context_hidden_dim, activation="gelu", name="context_projection_1")
-        self.context_projection_2 = layers.Dense(self.state_dim, activation="gelu", name="context_projection_2")
+        self.context_projection = SwiGLU(self.state_dim, name="context_projection")
         self.context_norm = layers.LayerNormalization(name="context_norm")
-
-        if self.use_time and self.use_time_modulation:
-            self.time_modulation = layers.Dense(self.state_dim, activation="sigmoid", name="time_modulation")
 
         self.delta_norm = layers.LayerNormalization(name="delta_norm")
         self.delta_fusion = layers.Dense(
@@ -227,7 +207,7 @@ class TemporalProgressionBlock(layers.Layer):
         self.delta_dropout = layers.Dropout(self.delta_dropout_rate, name="delta_dropout")
         self.delta_direction_network = SwiGLU(self.state_dim, name="delta_direction")
 
-        self.delta_magnitude_network = layers.Dense(1, activation="sigmoid", name="delta_magnitude")
+        self.delta_magnitude_network = layers.Dense(1, activation="softplus", name="delta_magnitude")
 
         if self.use_gate:
 
@@ -283,8 +263,7 @@ class TemporalProgressionBlock(layers.Layer):
         )
 
         # patient context
-        context = self.context_projection_1(current_input)
-        context = self.context_projection_2(context)
+        context = self.context_projection(current_input)
         context = self.context_norm(context)
 
         feature_difference = context - previous_features
@@ -294,18 +273,10 @@ class TemporalProgressionBlock(layers.Layer):
         else:
             feature_interaction = None
 
-        if self.use_time and self.use_time_modulation:
-            time_scale = self.time_modulation(time_embedding)
-            temporal_difference = feature_difference * time_scale
-        else:
-            time_scale = None
-            temporal_difference = feature_difference
-
         delta_inputs = [
             previous_features,
             context,
             feature_difference,
-            temporal_difference,
         ]
 
         if self.use_interaction:
@@ -324,6 +295,16 @@ class TemporalProgressionBlock(layers.Layer):
         delta_features = self.delta_dropout(delta_features, training=training)
 
         delta_direction = self.delta_direction_network(delta_features)
+        direction_norm = ops.sqrt(
+            ops.sum(
+                ops.square(delta_direction),
+                axis=-1,
+                keepdims=True
+            ) + 1e-8
+        )
+
+        delta_direction = delta_direction / direction_norm
+
         delta_magnitude = self.delta_magnitude_network(delta_features)
 
         delta = delta_direction * delta_magnitude
@@ -378,13 +359,10 @@ class TemporalProgressionBlock(layers.Layer):
 
         config.update({
             "state_dim": self.state_dim,
-            "time_dim": self.time_dim,
-            "context_hidden_dim": self.context_hidden_dim,
             "use_time": self.use_time,
             "use_gate": self.use_gate,
             "use_residual": self.use_residual,
             "use_interaction": self.use_interaction,
-            "use_time_modulation": self.use_time_modulation,
             "initial_residual_scale": self.initial_residual_scale,
             "delta_dropout": self.delta_dropout_rate
         })
@@ -398,7 +376,6 @@ class TemporalProgressionBlock(layers.Layer):
 class DiseaseProgressionDecoder(keras.layers.Layer):
     def __init__(
         self,
-        latent_dim=256,
         hidden_dims=(128, 64, 32),
         time_points=(0, 6, 12, 24),
         output_dim=3,
@@ -409,14 +386,12 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
         use_gate=True,
         use_residual=True,
         use_interaction=True,
-        use_time_modulation=True,
         delta_dropout=0.5,
         initial_residual_scale=0.1,
         **kwargs
     ):
         super().__init__(**kwargs)
 
-        self.latent_dim = latent_dim
         self.hidden_dims = hidden_dims
         self.time_points = time_points
 
@@ -429,10 +404,9 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
         self.use_time = use_time
         self.use_residual = use_residual
         self.use_interaction = use_interaction
-        self.use_time_modulation = use_time_modulation
 
         self.initial_residual_scale = float(initial_residual_scale)
-        self.delta_dropout = float(delta_dropout)
+        self.v = float(delta_dropout)
 
         if len(self.hidden_dims) == 0:
             raise ValueError("hidden_dims cannot be empty.")
@@ -477,13 +451,10 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
             if self.temporal_levels[level]:
                 temporal_block = TemporalProgressionBlock(
                     state_dim=hidden_dim,
-                    time_dim=time_dim,
-                    context_hidden_dim=hidden_dim * 2,
                     use_time=use_time,
                     use_gate=use_gate,
                     use_residual=use_residual,
                     use_interaction=use_interaction,
-                    use_time_modulation=use_time_modulation,
                     delta_dropout=delta_dropout,
                     initial_residual_scale=initial_residual_scale,
                     name = f"temporal_level_{level}_dim_{hidden_dim}"
@@ -639,7 +610,6 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
     def get_config(self):
         config = super().get_config()
         config.update({
-            "latent_dim": self.latent_dim,
             "hidden_dims": self.hidden_dims,
             "time_points": self.time_points,
             "output_dim": self.output_dim,
@@ -650,8 +620,7 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
             "use_gate": self.use_gate,
             "use_residual": self.use_residual,
             "use_interaction": self.use_interaction,
-            "use_time_modulation": self.use_time_modulation,
-            "delta_dropout": self.delta_dropout_rate,
+            "delta_dropout": self.delta_dropout,
             "initial_residual_scale": self.initial_residual_scale
         })
 

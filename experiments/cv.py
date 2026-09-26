@@ -145,8 +145,9 @@ def cross_validation(
             modality_output_dim=128,
             latent_dim=512,
             num_transformer_layers=3,
-            num_heads=2,
+            num_heads=4,
             ff_dim=512,
+            pooling_hidden_dim=32,
             modality_dropout=0.1,
             progression_hidden_dims=(256, 128, 32),
             time_points=(0, 6, 12, 24),
@@ -156,7 +157,6 @@ def cross_validation(
             use_time=True,
             use_gate=True,
             use_residual=True,
-            use_time_modulation=True,
             use_interaction=True,
 
             initial_residual_scale=0.25,

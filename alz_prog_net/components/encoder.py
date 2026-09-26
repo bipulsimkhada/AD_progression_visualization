@@ -59,13 +59,12 @@ class ModalityEncoder(keras.layers.Layer):
                 )
             )
 
-            if i < len(hidden_units) - 1:
-                self.mlp.append(
-                    layers.Dropout(
-                        dropout_rate,
-                        name=f"{modality_name}_dropout_{i}",
-                    )
+            self.mlp.append(
+                layers.Dropout(
+                    dropout_rate,
+                    name=f"{modality_name}_dropout_{i}",
                 )
+            )
 
         # Ensure the encoder always produces output_dim features.
         if hidden_units[-1] != output_dim:
@@ -74,6 +73,13 @@ class ModalityEncoder(keras.layers.Layer):
                     output_dim,
                     activation="gelu",
                     name=f"{modality_name}_output",
+                )
+            )
+
+            self.mlp.append(
+                layers.Dropout(
+                    dropout_rate,
+                    name=f"{modality_name}_output_dropout",
                 )
             )
 

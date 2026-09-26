@@ -38,7 +38,6 @@ class AlzProgNet(keras.Model):
         use_residual=True,
 
         use_interaction=True,
-        use_time_modulation=True,
 
         initial_residual_scale=0.1,
 
@@ -69,7 +68,6 @@ class AlzProgNet(keras.Model):
         self.use_gate = use_gate
         self.use_residual = use_residual
         self.use_interaction=use_interaction
-        self.use_time_modulation=use_time_modulation
 
         self.delta_dropout=delta_dropout
 
@@ -114,7 +112,6 @@ class AlzProgNet(keras.Model):
             hidden_dim=self.pooling_hidden_dim,
             dropout_rate=self.modality_dropout,
             name="attention_pooling"
-
         )
         self.latent_norm = layers.LayerNormalization(name="latent_norm")
 
@@ -131,7 +128,6 @@ class AlzProgNet(keras.Model):
         # --------------------------------------------------
 
         self.disease_progression = DiseaseProgressionDecoder(
-            latent_dim=self.latent_dim,
             hidden_dims=self.progression_hidden_dims,
             time_points=self.time_points,
             output_dim=self.output_dim,
@@ -142,7 +138,6 @@ class AlzProgNet(keras.Model):
             use_gate=self.use_gate,
             use_residual=self.use_residual,
             use_interaction=self.use_interaction,
-            use_time_modulation=self.use_time_modulation,
             delta_dropout=self.delta_dropout,
             initial_residual_scale=self.initial_residual_scale,
             name="disease_progression"
@@ -225,7 +220,6 @@ class AlzProgNet(keras.Model):
             "use_time": self.use_time,
             "use_gate": self.use_gate,
             "use_interaction": self.use_interaction,
-            "use_time_modulation": self.use_time_modulation,
             "use_residual": self.use_residual,
             "initial_residual_scale": self.initial_residual_scale,
             "delta_dropout": self.delta_dropout,

@@ -143,7 +143,7 @@ def evaluate_ensemble(
             verbose=0,
         )
 
-        predictions.append(y_pred)
+        predictions.append(y_pred["predictions"])
 
     # --------------------------------------------------------------
     # Stack predictions
@@ -177,7 +177,7 @@ def evaluate_ensemble(
     # --------------------------------------------------------------
     # Evaluate ensemble
     # --------------------------------------------------------------
-
+    y_test = np.stack(y_test[:, 0])
     evaluation = evaluate_model(
         y_test,
         y_pred_mean,
