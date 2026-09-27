@@ -61,12 +61,13 @@ def main():
     print(f"Train samples: {len(train_idx)}")
     print(f"Test samples:  {len(test_idx)}")
 
-    # run_loss_stage("stage_3_time_weights", X_train, y_train, y_stable_train, groups_train)
-    run_loss_stage("stage_4_loss_type", X_train, y_train, y_stable_train, groups_train)
+    # run_loss_stage("stage_1_transition", X_train, y_train, y_stable_train, groups_train)
+    # run_loss_stage("stage_2_converter_sample", X_train, y_train, y_stable_train, groups_train)
+    run_loss_stage("stage_3_transition_weight", X_train, y_train, y_stable_train, groups_train)
 
-    # evaluate_ensemble("models/loss/s4_loss_mse", X_train, X_test, y_test, metadata_test,
+    # evaluate_ensemble("models/loss/s2_loss_5", X_train, X_test, y_test, metadata_test,
     #                         ("mri", "pet", "cog", "csf", "rf"),
-    #                         "ensemble_test_s4_loss_mse",
+    #                         "ensemble_test_s2_loss_5",
     #                         "median", "min-max")
 
 
