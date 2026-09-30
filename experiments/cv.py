@@ -18,7 +18,7 @@ from utils import compute_time_class_weights
 from alz_prog_net.loss import LongitudinalTransitionLoss, DiscreteTimeConversionLoss, WeightedBinaryCrossentropy
 from alz_prog_net.metrics import grouped_categorical_accuracy
 from alz_prog_net.eval import evaluate_model, evaluate_auxiliary_matrices
-from experiments.constants import MODALITIES
+from experiments.constants import MODALITIES, RANDOM_STATE
 from utils import split_modalities
 
 
@@ -27,23 +27,7 @@ def cross_validation(
     y,
     y_stable,
     groups,
-    combo,
-    run_name,
-    n_splits=5,
-    random_state=42,
-    imputer: Literal["mean", "median"] = "median",
-    scaling: Literal["min-max", "standardization"] = "min-max",
-    epochs=250,
-    batch_size=32,
-    transition_loss_weight=1.0,
-    transition_loss="huber",
-    huber_delta=1.0,
-    stable_transition_weight=0.5,
-    converter_transition_weight=3.0,
-    converter_sample_weight=1.5,
-    stable_time_weights=[1.0, 1.0, 1.0, 1.0],
-    converter_time_weights=[1.0, 1.0, 1.0, 1.0],
-    from_logits=False,
+    config,
 ):
     """
     Perform grouped stratified K-fold cross-validation.
@@ -57,6 +41,8 @@ def cross_validation(
     # Directories
     # ------------------------------------------------------------------
 
+    run_name = config["name"]
+
     model_dir = Path("models") / run_name
     results_dir = Path("results") / "cv" / run_name
 
@@ -68,9 +54,9 @@ def cross_validation(
     # ------------------------------------------------------------------
 
     sgkf = StratifiedGroupKFold(
-        n_splits=n_splits,
+        n_splits=10,
         shuffle=True,
-        random_state=random_state,
+        random_state=RANDOM_STATE,
     )
 
     # all_fold_results = []
@@ -78,7 +64,7 @@ def cross_validation(
     for fold, (train_idx, val_idx) in enumerate(
         sgkf.split(X, y_stable, groups)
     ):
-        print(f"\n===== Fold {fold + 1}/{n_splits} =====")
+        print(f"\n===== Fold {fold + 1}/{10} =====")
 
         # --------------------------------------------------------------
         # Split data
@@ -90,14 +76,10 @@ def cross_validation(
         y_train = y[train_idx]
         y_train = {
             "predictions": np.stack(y_train[:, 0]),
-            # "trajectory": np.stack(y_train[:, 1]),
-            # "conversion_hazard": np.stack(y_train[:, 2]),
         }
         y_val = y[val_idx]
         y_val = {
             "predictions": np.stack(y_val[:, 0]),
-            # "trajectory": np.stack(y_val[:, 1]),
-            # "conversion_hazard": np.stack(y_val[:, 2]),
         }
 
 
@@ -112,14 +94,14 @@ def cross_validation(
             (
                 "imputer",
                 SimpleImputer(
-                    strategy=imputer
+                    strategy=config["model"]["imputer"]
                 ),
             ),
             (
                 "scaler",
                 (
                     MinMaxScaler()
-                    if scaling == "min-max"
+                    if config["model"]["scaling"] == "min-max"
                     else StandardScaler()
                 ),
             ),
@@ -128,8 +110,8 @@ def cross_validation(
         X_train_scaled = pipe.fit_transform(X_train_raw)
         X_val_scaled = pipe.transform(X_val_raw)
 
-        X_train = split_modalities(X_train_scaled, combo)
-        X_val = split_modalities(X_val_scaled, combo)
+        X_train = split_modalities(X_train_scaled, config["modalities"])
+        X_val = split_modalities(X_val_scaled, config["modalities"])
 
         # --------------------------------------------------------------
         # Fold-specific class weights
@@ -138,11 +120,11 @@ def cross_validation(
         class_weights = compute_time_class_weights(y_train["predictions"])
 
         alz_prog_net = AlzProgNet(
-            num_modalities=5,
+            num_modalities=len(config["modalities"]),
             modalities_hidden_dims=[32, 256],
             modality_output_dim=128,
             latent_dim=512,
-            num_transformer_layers=3,
+            num_transformer_layers=config["model"]["num_transformer_layers"],
             num_heads=4,
             ff_dim=512,
             pooling_hidden_dim=32,
@@ -150,35 +132,18 @@ def cross_validation(
             # progression_hidden_dims=(256, 128, 32),
             progression_hidden_dims=(256, 128, 16),
             time_points=(0, 6, 12, 24),
-            temporal_levels=(True, True, False),
+            temporal_levels=config["model"]["temporal_levels"],
             time_dim=16,
             n_time_frequencies=4,
-            use_time=True,
-            use_gate=True,
+            use_time=config["model"]["use_time"],
+            use_gate=config["model"]["use_gate"],
             use_residual=True,
-            use_interaction=True,
+            use_interaction=config["model"]["use_interaction"],
 
             initial_residual_scale=0.25,
             delta_dropout=0.05,
             output_dim=3
         )
-
-        # inputs = [
-        #     keras.Input(
-        #         shape=(MODALITIES[m][0],),
-        #         name=f"modality_{i}",
-        #     )
-        #     for i, m in enumerate(combo)
-        #     if m in MODALITIES
-        # ]
-
-        # outputs = fold_model(inputs)
-
-        # alz_prog_net = keras.Model(
-        #     inputs=inputs,
-        #     outputs={outputs,
-        #     name="AlzProgNet",
-        # )
 
 
         # --------------------------------------------------------------
@@ -187,15 +152,15 @@ def cross_validation(
 
         loss_fn = LongitudinalTransitionLoss(
             class_weights=class_weights,
-            transition_loss_weight=transition_loss_weight,
-            transition_loss=transition_loss,
-            huber_delta=huber_delta,
-            from_logits=from_logits,
-            stable_transition_weight=stable_transition_weight,
-            converter_transition_weight=converter_transition_weight,
-            converter_sample_weight=converter_sample_weight,
-            stable_time_weights=stable_time_weights,
-            converter_time_weights=converter_time_weights,
+            transition_loss_weight=config["loss"]["transition_loss_weight"],
+            transition_loss=config["loss"]["transition_loss"],
+            huber_delta=config["loss"]["huber_delta"],
+            from_logits=False,
+            stable_transition_weight=config["loss"]["stable_transition_weight"],
+            converter_transition_weight=config["loss"]["converter_transition_weight"],
+            converter_sample_weight=config["loss"]["converter_sample_weight"],
+            stable_time_weights=config["loss"]["stable_time_weights"],
+            converter_time_weights=config["loss"]["converter_time_weights"],
         )
 
         optimizer = keras.optimizers.AdamW()
@@ -249,8 +214,8 @@ def cross_validation(
             X_train,
             y_train,
             validation_data=(X_val, y_val),
-            epochs=epochs,
-            batch_size=batch_size,
+            epochs=250,
+            batch_size=config["model"]["batch_size"],
             verbose=0,
             callbacks=callbacks,
         )
@@ -313,7 +278,8 @@ def cross_validation(
 
             # Fold information
             "fold": fold,
-            "n_splits": n_splits,
+            "n_splits": 10,
+            "random_state": RANDOM_STATE,
 
             # Training information
             "best_epoch": best_epoch,
@@ -321,30 +287,12 @@ def cross_validation(
             "best_val_loss": best_val_loss,
 
             # Configuration
-            "batch_size": batch_size,
-            "max_epochs": epochs,
-            "optimizer": "AdamW",
-            "imputer": imputer,
-            "scaling": scaling,
-            "modalities": list(combo),
-
-            # Loss configuration
-            "stable_transition_weight": stable_transition_weight,
-            "converter_transition_weight": converter_transition_weight,
-            "converter_sample_weight": converter_sample_weight,
-            "stable_time_weights": stable_time_weights,
-            "converter_time_weights": converter_time_weights,
-            "transition_loss_weight": transition_loss_weight,
-            "transition_loss": transition_loss,
-            "huber_delta": huber_delta,
-            "from_logits": from_logits,
+            **config,
 
             # Fold information
             "n_train": len(train_idx),
             "n_val": len(val_idx),
 
-            # Useful for reproducibility
-            "random_state": random_state,
         }
 
         # --------------------------------------------------------------

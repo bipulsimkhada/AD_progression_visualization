@@ -1,12 +1,15 @@
+import multiprocessing
 import os
+
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import StratifiedGroupKFold
 
 from dataset.dataset import create_dataset, createOutputLabels
-from experiments.constants import RANDOM_STATE
-from experiments.loss import run_loss_stage
+from experiments.constants import RANDOM_STATE, LOSS_SEARCH_STAGES, CONFIGS
+from experiments.cv import cross_validation
 from experiments.test import evaluate_ensemble
+
 
 def main():
     os.environ["KERAS_BACKEND"] = "tensorflow"
@@ -61,9 +64,57 @@ def main():
     print(f"Train samples: {len(train_idx)}")
     print(f"Test samples:  {len(test_idx)}")
 
-    # run_loss_stage("stage_1_transition", X_train, y_train, y_stable_train, groups_train)
-    # run_loss_stage("stage_2_converter_sample", X_train, y_train, y_stable_train, groups_train)
-    run_loss_stage("stage_3_transition_weight", X_train, y_train, y_stable_train, groups_train)
+    for i, config in enumerate(CONFIGS, start=1):
+        config_name = config["name"]
+
+        print("\n" + "-" * 80)
+        print(
+            f"Configuration {i}/{len(CONFIGS)}: "
+            f"{config_name}"
+        )
+        print("-" * 80)
+
+        # multiprocessing.set_start_method("spawn", force=True)
+        process = multiprocessing.Process(
+            target=cross_validation,
+            args=(
+                X_train,
+                y_train,
+                y_stable_train,
+                groups_train,
+                config,
+            ),
+            name=f"loss-{config_name}",
+        )
+
+        process.start()
+
+        print(
+            f"Started process PID={process.pid} "
+            f"for {config_name}"
+        )
+
+        # Wait until this experiment completely finishes
+        # before starting the next one.
+        process.join()
+
+        if process.exitcode == 0:
+            print(
+                f"\nSUCCESS: {config_name} "
+                f"(PID={process.pid})"
+            )
+        else:
+            print(
+                f"\nFAILED: {config_name} "
+                f"(PID={process.pid}, "
+                f"exit code={process.exitcode})"
+            )
+
+            # Stop the entire loss search if one experiment fails.
+            raise RuntimeError(
+                f"Loss configuration '{config_name}' failed "
+                f"with exit code {process.exitcode}"
+            )
 
     # evaluate_ensemble("models/loss/s2_loss_5", X_train, X_test, y_test, metadata_test,
     #                         ("mri", "pet", "cog", "csf", "rf"),
