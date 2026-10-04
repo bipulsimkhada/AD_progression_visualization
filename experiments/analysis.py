@@ -37,7 +37,7 @@ config_names = [
 #     "proposed_with_median_standarization"
 # ]
 
-def get_results(path, prefix=None):
+def get_results(path, config_names, prefix=None, detailed:bool=False):
     path = Path(path)
 
     rows = []
@@ -91,6 +91,7 @@ def get_results(path, prefix=None):
                 "converter_T12_accuracy": data["converter"]["by_time"]["12_month"]["accuracy"],
                 "converter_T24_accuracy": data["converter"]["by_time"]["24_month"]["accuracy"],
             })
+            
 
         df = pd.DataFrame(results)
 

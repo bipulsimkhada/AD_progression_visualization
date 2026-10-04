@@ -6,6 +6,7 @@ import numpy as np
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
+import joblib
 
 import keras
 from sklearn.model_selection import StratifiedGroupKFold
@@ -353,3 +354,49 @@ def cross_validation(
         gc.collect()
 
     # return all_fold_results
+
+
+def save_preprocessing_pipeline(
+    X,
+    y,
+    y_stable,
+    groups,
+    imputer="mean",
+    scaling="standard",
+    random_state=42,
+):
+    results_dir = Path("results") / "cv" / "mean_standarization_pipeline"
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+    sgkf = StratifiedGroupKFold(
+        n_splits=10,
+        shuffle=True,
+        random_state=random_state,
+    )
+
+    for fold, (train_idx, val_idx) in enumerate(
+        sgkf.split(X, y_stable, groups)
+    ):
+        print(f"===== Fold {fold + 1}/10 =====")
+
+        # 1. Split data
+        X_train_raw = X.iloc[train_idx]
+        X_val_raw = X.iloc[val_idx]
+
+        # 2. Configure preprocessor pipeline
+        scaler_cls = MinMaxScaler if scaling == "min-max" else StandardScaler
+        
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy=imputer)),
+            ("scaler", scaler_cls()),
+        ])
+
+        # 3. Fit pipeline ONLY on training fold
+        # (Preserves DataFrame column names if X is a DataFrame)
+        X_train_processed = pipe.fit_transform(X_train_raw)
+        X_val_processed = pipe.transform(X_val_raw)
+
+        # 4. Save fold pipeline
+        pipeline_path = results_dir / f"fold_{fold}_pipeline.joblib"
+        joblib.dump(pipe, pipeline_path)
+        print(f"Saved preprocessing pipeline to {pipeline_path}")
