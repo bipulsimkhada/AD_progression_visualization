@@ -153,30 +153,31 @@ CONFIGS = [
 #             "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
 #         }
 #     },
-    # {
-    #     "name": "proposed_with_mean_standarization",
-    #     "modalities": ("mri", "pet", "cog", "csf", "rf"),
-    #     "model": {
-    #         "imputer": "mean",
-    #         "scaling": "standarization",
-    #         "batch_size": 32,
-    #         "temporal_levels": (True, True, False),
-    #         "num_transformer_layers": 3,
-    #         "use_time": True,
-    #         "use_gate": True,
-    #         "use_interaction": True,
-    #     },
-    #     "loss": {
-    #         "transition_loss_weight": 4, #s1_loss_7
-    #         "transition_loss": "mse",
-    #         "stable_transition_weight": 1.5,
-    #         "converter_transition_weight": 2.0,
-    #         "converter_sample_weight": 3, #s2_loss_5
-    #         "huber_delta": 1.0,
-    #         "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
-    #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
-    #     }
-    # },
+    {
+        "name": "proposed_with_mean_standarization",
+        "modalities": ("mri", "pet", "cog", "csf", "rf"),
+        "model": {
+            "imputer": "mean",
+            "scaling": "standarization",
+            "batch_size": 32,
+            "temporal_levels": (True, True, False),
+            "num_transformer_layers": 3,
+            "use_time": True,
+            "use_gate": True,
+            "use_interaction": True,
+            "return_details": True,
+        },
+        "loss": {
+            "transition_loss_weight": 4, #s1_loss_7
+            "transition_loss": "mse",
+            "stable_transition_weight": 1.5,
+            "converter_transition_weight": 2.0,
+            "converter_sample_weight": 3, #s2_loss_5
+            "huber_delta": 1.0,
+            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
+        }
+    },
     # {
     #         "name": "proposed_with_median_standarization",
     #         "modalities": ("mri", "pet", "cog", "csf", "rf"),
@@ -297,128 +298,130 @@ CONFIGS = [
     #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
     #     }
     # },
-    {
-        "name": "proposed_with_mean_standarization_wo_mri",
-        "modalities": ("pet", "cog", "csf", "rf"),
-        "model": {
-            "imputer": "mean",
-            "scaling": "standarization",
-            "batch_size": 32,
-            "temporal_levels": (True, True, False),
-            "num_transformer_layers": 3,
-            "use_time": True,
-            "use_gate": True,
-            "use_interaction": True,
-        },
-        "loss": {
-            "transition_loss_weight": 4, #s1_loss_7
-            "transition_loss": "mse",
-            "stable_transition_weight": 1.5,
-            "converter_transition_weight": 2.0,
-            "converter_sample_weight": 3, #s2_loss_5
-            "huber_delta": 1.0,
-            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
-            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
-        }
-    },
-    {
-        "name": "proposed_with_mean_standarization_wo_pet",
-        "modalities": ("mri", "cog", "csf", "rf"),
-        "model": {
-            "imputer": "mean",
-            "scaling": "standarization",
-            "batch_size": 32,
-            "temporal_levels": (True, True, False),
-            "num_transformer_layers": 3,
-            "use_time": True,
-            "use_gate": True,
-            "use_interaction": True,
-        },
-        "loss": {
-            "transition_loss_weight": 4, #s1_loss_7
-            "transition_loss": "mse",
-            "stable_transition_weight": 1.5,
-            "converter_transition_weight": 2.0,
-            "converter_sample_weight": 3, #s2_loss_5
-            "huber_delta": 1.0,
-            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
-            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
-        }
-    },
-    {
-        "name": "proposed_with_mean_standarization_wo_cog",
-        "modalities": ("mri", "pet", "csf", "rf"),
-        "model": {
-            "imputer": "mean",
-            "scaling": "standarization",
-            "batch_size": 32,
-            "temporal_levels": (True, True, False),
-            "num_transformer_layers": 3,
-            "use_time": True,
-            "use_gate": True,
-            "use_interaction": True,
-        },
-        "loss": {
-            "transition_loss_weight": 4, #s1_loss_7
-            "transition_loss": "mse",
-            "stable_transition_weight": 1.5,
-            "converter_transition_weight": 2.0,
-            "converter_sample_weight": 3, #s2_loss_5
-            "huber_delta": 1.0,
-            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
-            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
-        }
-    },
-    {
-        "name": "proposed_with_mean_standarization_wo_csf",
-        "modalities": ("mri", "pet", "cog", "rf"),
-        "model": {
-            "imputer": "mean",
-            "scaling": "standarization",
-            "batch_size": 32,
-            "temporal_levels": (True, True, False),
-            "num_transformer_layers": 3,
-            "use_time": True,
-            "use_gate": True,
-            "use_interaction": True,
-        },
-        "loss": {
-            "transition_loss_weight": 4, #s1_loss_7
-            "transition_loss": "mse",
-            "stable_transition_weight": 1.5,
-            "converter_transition_weight": 2.0,
-            "converter_sample_weight": 3, #s2_loss_5
-            "huber_delta": 1.0,
-            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
-            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
-        }
-    },
-    {
-        "name": "proposed_with_mean_standarization_wo_rf",
-        "modalities": ("mri", "pet", "cog", "csf"),
-        "model": {
-            "imputer": "mean",
-            "scaling": "standarization",
-            "batch_size": 32,
-            "temporal_levels": (True, True, False),
-            "num_transformer_layers": 3,
-            "use_time": True,
-            "use_gate": True,
-            "use_interaction": True,
-        },
-        "loss": {
-            "transition_loss_weight": 4, #s1_loss_7
-            "transition_loss": "mse",
-            "stable_transition_weight": 1.5,
-            "converter_transition_weight": 2.0,
-            "converter_sample_weight": 3, #s2_loss_5
-            "huber_delta": 1.0,
-            "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
-            "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
-        }
-    },
+    # {
+    #     "name": "proposed_with_mean_standarization_wo_mri",
+    #     "modalities": ("pet", "cog", "csf", "rf"),
+    #     "model": {
+    #         "imputer": "mean",
+    #         "scaling": "standarization",
+    #         "batch_size": 32,
+    #         "temporal_levels": (True, True, False),
+    #         "num_transformer_layers": 3,
+    #         "use_time": True,
+    #         "use_gate": True,
+    #         "use_interaction": True,
+    #     },
+    #     "loss": {
+    #         "transition_loss_weight": 4, #s1_loss_7
+    #         "transition_loss": "mse",
+    #         "stable_transition_weight": 1.5,
+    #         "converter_transition_weight": 2.0,
+    #         "converter_sample_weight": 3, #s2_loss_5
+    #         "huber_delta": 1.0,
+    #         "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #     }
+    # },
+    # {
+    #     "name": "proposed_with_mean_standarization_wo_pet",
+    #     "modalities": ("mri", "cog", "csf", "rf"),
+    #     "model": {
+    #         "imputer": "mean",
+    #         "scaling": "standarization",
+    #         "batch_size": 32,
+    #         "temporal_levels": (True, True, False),
+    #         "num_transformer_layers": 3,
+    #         "use_time": True,
+    #         "use_gate": True,
+    #         "use_interaction": True,
+    #     },
+    #     "loss": {
+    #         "transition_loss_weight": 4, #s1_loss_7
+    #         "transition_loss": "mse",
+    #         "stable_transition_weight": 1.5,
+    #         "converter_transition_weight": 2.0,
+    #         "converter_sample_weight": 3, #s2_loss_5
+    #         "huber_delta": 1.0,
+    #         "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #     }
+    # },
+    # {
+    #     "name": "proposed_with_mean_standarization_wo_cog",
+    #     "modalities": ("mri", "pet", "csf", "rf"),
+    #     "model": {
+    #         "imputer": "mean",
+    #         "scaling": "standarization",
+    #         "batch_size": 32,
+    #         "temporal_levels": (True, True, False),
+    #         "num_transformer_layers": 3,
+    #         "use_time": True,
+    #         "use_gate": True,
+    #         "use_interaction": True,
+    #     },
+    #     "loss": {
+    #         "transition_loss_weight": 4, #s1_loss_7
+    #         "transition_loss": "mse",
+    #         "stable_transition_weight": 1.5,
+    #         "converter_transition_weight": 2.0,
+    #         "converter_sample_weight": 3, #s2_loss_5
+    #         "huber_delta": 1.0,
+    #         "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #     }
+    # },
+    # {
+    #     "name": "proposed_with_mean_standarization_wo_csf",
+    #     "modalities": ("mri", "pet", "cog", "rf"),
+    #     "model": {
+    #         "imputer": "mean",
+    #         "scaling": "standarization",
+    #         "batch_size": 32,
+    #         "temporal_levels": (True, True, False),
+    #         "num_transformer_layers": 3,
+    #         "use_time": True,
+    #         "use_gate": True,
+    #         "use_interaction": True,
+    #     },
+    #     "loss": {
+    #         "transition_loss_weight": 4, #s1_loss_7
+    #         "transition_loss": "mse",
+    #         "stable_transition_weight": 1.5,
+    #         "converter_transition_weight": 2.0,
+    #         "converter_sample_weight": 3, #s2_loss_5
+    #         "huber_delta": 1.0,
+    #         "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #     }
+    # },
+    # {
+    #     "name": "proposed_with_mean_standarization_wo_rf",
+    #     "modalities": ("mri", "pet", "cog", "csf"),
+    #     "model": {
+    #         "imputer": "mean",
+    #         "scaling": "standarization",
+    #         "batch_size": 32,
+    #         "temporal_levels": (True, True, False),
+    #         "num_transformer_layers": 3,
+    #         "use_time": True,
+    #         "use_gate": True,
+    #         "use_interaction": True,
+    #     },
+    #     "loss": {
+    #         "transition_loss_weight": 4, #s1_loss_7
+    #         "transition_loss": "mse",
+    #         "stable_transition_weight": 1.5,
+    #         "converter_transition_weight": 2.0,
+    #         "converter_sample_weight": 3, #s2_loss_5
+    #         "huber_delta": 1.0,
+    #         "stable_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #         "converter_time_weights": [1.0, 1.0, 1.0, 1.0],
+    #     }
+    # },
 
 ]
+
+
 
 LOSS_SEARCH_STAGES = {
     "stage_1_transition": [

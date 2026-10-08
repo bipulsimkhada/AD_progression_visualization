@@ -348,9 +348,9 @@ class TemporalProgressionBlock(layers.Layer):
 
         return {
             "state": state,
-            "delta": delta,
+            "delta_magnitude": delta_magnitude,
+            "residual_scale": residual_scale,
             "gate": gate,
-            "update": update
         }
 
 
@@ -532,13 +532,13 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
         hidden_history = [
             [state] for state in baseline_states
         ]
-        delta_history = [
+        residual_scale_history = [
             [] for _ in self.hidden_dims
         ]
         gate_history = [
             [] for _ in self.hidden_dims
         ]
-        update_history = [
+        delta_magnitude_history = [
             [] for _ in self.hidden_dims
         ]
 
@@ -577,9 +577,9 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
 
                     current_state = result["state"]
 
-                    delta_history[level].append(result["delta"])
+                    residual_scale_history[level].append(result["residual_scale"])
                     gate_history[level].append(result["gate"])
-                    update_history[level].append(result["update"])
+                    delta_magnitude_history[level].append(result["delta_magnitude"])
 
                 else:
                     current_state = self.initial_layers[level](vertical_input)
@@ -600,11 +600,11 @@ class DiseaseProgressionDecoder(keras.layers.Layer):
             return predictions
 
         return {
-            "output": predictions,
+            "predictions": predictions,
             "hidden_states": hidden_history,
-            "deltas": delta_history,
+            "residual_scales": residual_scale_history,
             "gates": gate_history,
-            "updates": update_history
+            "delta_magnitudes": delta_magnitude_history
         }
 
     def get_config(self):

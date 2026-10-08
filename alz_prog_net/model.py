@@ -173,11 +173,10 @@ class AlzProgNet(keras.Model):
                 training=training
             )
 
-        # x = self.transformer_norm(x)
-        # x = self.flattern(x)
-        x = self.attention_pooling(
+        x, attention_weights = self.attention_pooling(
             x,
-            training=training
+            training=training,
+            return_attention=True
         )
         x = self.latent_norm(x)
 
@@ -185,14 +184,25 @@ class AlzProgNet(keras.Model):
 
 
         # main progression decoder
-        predictions = self.disease_progression(
+        decoder_output = self.disease_progression(
             latent,
-            training=training
+            training=training,
+            return_details=True
         )
 
-        return {
-            "predictions": predictions,
-        }
+        if return_details:
+            return {
+                "predictions": decoder_output["predictions"],
+                "attention_weights": attention_weights,
+                "hidden_states": decoder_output["hidden_states"],
+                "residual_scales": decoder_output["residual_scales"],
+                "gates": decoder_output["gates"],
+                "delta_magnitudes": decoder_output["delta_magnitudes"]
+            }
+        else:
+            return {
+                "predictions": decoder_output["predictions"],
+            }
 
     # ======================================================
     # Keras serialization

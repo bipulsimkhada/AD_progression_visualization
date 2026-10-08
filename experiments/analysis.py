@@ -3,39 +3,6 @@ import json
 import pandas as pd
 from experiments.constants import CONFIGS
 
-# config_names = [
-#     "proposed_with_mean_standarization",
-#     "proposed_with_mean_standarization_base_loss",
-#     "proposed_with_base_and_transition_loss_weight",
-#     "proposed_with_base_and_converter_sample_weight",
-#     "proposed_with_base_and_transition_weight"
-# ]
-
-# config_names = [
-#     "proposed_with_mean_standarization",
-#     "proposed_with_mean_standarization_wo_transformer",
-#     "proposed_with_mean_standarization_wo_temporal",
-#     "proposed_with_mean_standarization_wo_time",
-#     "proposed_with_mean_standarization_base_model"
-# ]
-
-config_names = [
-    "proposed_with_mean_standarization",
-    "proposed_with_mean_standarization_wo_mri",
-    "proposed_with_mean_standarization_wo_pet",
-    "proposed_with_mean_standarization_wo_cog",
-    "proposed_with_mean_standarization_wo_csf",
-    "proposed_with_mean_standarization_wo_rf"
-]
-
-
-
-# config_names = [
-#     "proposed_median_min-max",
-#     "proposed_with_mean_min-max",
-#     "proposed_with_mean_standarization",
-#     "proposed_with_median_standarization"
-# ]
 
 def get_results(path, config_names, prefix=None, detailed:bool=False):
     path = Path(path)

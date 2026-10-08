@@ -59,6 +59,7 @@ def main():
 
     X_test = X.iloc[test_idx]
     y_test = target_tensors[test_idx]
+    y_stable_test = y_stable[test_idx]
     metadata_test = metadata.iloc[test_idx]
 
     print(f"Train samples: {len(train_idx)}")
@@ -118,7 +119,7 @@ def main():
 
     evaluate_ensemble(
         "models/proposed_with_mean_standarization",
-        X_test, y_test, metadata_test,
+        X_test, y_test, y_stable_test, metadata_test,
         ("mri", "pet", "cog", "csf", "rf"),
         "ensemble_proposed_with_mean_standarization",
         "results/cv/mean_standarization_pipeline"
